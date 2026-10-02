@@ -1,9 +1,12 @@
 {
-  "calibration_manifest_hash": "074da6ecdf82f1e59fbdcdefb9fe04e6836e6b622814de0ec94d693a129b2ca9",
-  "calibration_nll": 0.6931479573249817,
-  "fitted_at": "2026-10-01T11:03:23.000511+00:00",
+  "calibration_manifest_hash": "",
+  "calibration_nll": null,
+  "fitted_at": "",
+  "language_weight": 1.0,
   "model_name": "ViT-B-32-quickgelu",
   "pretrained_checkpoint": "openai",
-  "prompt_cache_key": "8fe68166ff49816e21f91efbac93daf5f37b9c4841ad4c3e1c81702977d02218",
-  "temperature": 1126.9716796875
+  "prompt_cache_key": "",
+  "reference_manifest_hash": "",
+  "reference_weight": 1.0,
+  "temperature": 1.0
 }
