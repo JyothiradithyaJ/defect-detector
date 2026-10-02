@@ -1,0 +1,2746 @@
+[
+  {
+    "category": "bottle",
+    "defect_type": "broken_large",
+    "image_id": "bottle/test/broken_large/014.png",
+    "image_path": "bottle/test/broken_large/014.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_large/014_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_large",
+    "image_id": "bottle/test/broken_large/006.png",
+    "image_path": "bottle/test/broken_large/006.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_large/006_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_large",
+    "image_id": "bottle/test/broken_large/016.png",
+    "image_path": "bottle/test/broken_large/016.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_large/016_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_large",
+    "image_id": "bottle/test/broken_large/017.png",
+    "image_path": "bottle/test/broken_large/017.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_large/017_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_small",
+    "image_id": "bottle/test/broken_small/014.png",
+    "image_path": "bottle/test/broken_small/014.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_small/014_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_small",
+    "image_id": "bottle/test/broken_small/004.png",
+    "image_path": "bottle/test/broken_small/004.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_small/004_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_small",
+    "image_id": "bottle/test/broken_small/019.png",
+    "image_path": "bottle/test/broken_small/019.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_small/019_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "broken_small",
+    "image_id": "bottle/test/broken_small/000.png",
+    "image_path": "bottle/test/broken_small/000.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/broken_small/000_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "contamination",
+    "image_id": "bottle/test/contamination/010.png",
+    "image_path": "bottle/test/contamination/010.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/contamination/010_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "contamination",
+    "image_id": "bottle/test/contamination/017.png",
+    "image_path": "bottle/test/contamination/017.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/contamination/017_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "contamination",
+    "image_id": "bottle/test/contamination/006.png",
+    "image_path": "bottle/test/contamination/006.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/contamination/006_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "contamination",
+    "image_id": "bottle/test/contamination/015.png",
+    "image_path": "bottle/test/contamination/015.png",
+    "label": 1,
+    "mask_path": "bottle/ground_truth/contamination/015_mask.png"
+  },
+  {
+    "category": "bottle",
+    "defect_type": "good",
+    "image_id": "bottle/test/good/014.png",
+    "image_path": "bottle/test/good/014.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "bottle",
+    "defect_type": "good",
+    "image_id": "bottle/test/good/016.png",
+    "image_path": "bottle/test/good/016.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "bottle",
+    "defect_type": "good",
+    "image_id": "bottle/test/good/002.png",
+    "image_path": "bottle/test/good/002.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "bottle",
+    "defect_type": "good",
+    "image_id": "bottle/test/good/008.png",
+    "image_path": "bottle/test/good/008.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "bent_wire",
+    "image_id": "cable/test/bent_wire/008.png",
+    "image_path": "cable/test/bent_wire/008.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/bent_wire/008_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "bent_wire",
+    "image_id": "cable/test/bent_wire/010.png",
+    "image_path": "cable/test/bent_wire/010.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/bent_wire/010_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "bent_wire",
+    "image_id": "cable/test/bent_wire/007.png",
+    "image_path": "cable/test/bent_wire/007.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/bent_wire/007_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cable_swap",
+    "image_id": "cable/test/cable_swap/004.png",
+    "image_path": "cable/test/cable_swap/004.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cable_swap/004_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cable_swap",
+    "image_id": "cable/test/cable_swap/007.png",
+    "image_path": "cable/test/cable_swap/007.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cable_swap/007_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "combined",
+    "image_id": "cable/test/combined/003.png",
+    "image_path": "cable/test/combined/003.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/combined/003_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "combined",
+    "image_id": "cable/test/combined/005.png",
+    "image_path": "cable/test/combined/005.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/combined/005_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cut_inner_insulation",
+    "image_id": "cable/test/cut_inner_insulation/011.png",
+    "image_path": "cable/test/cut_inner_insulation/011.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cut_inner_insulation/011_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cut_inner_insulation",
+    "image_id": "cable/test/cut_inner_insulation/005.png",
+    "image_path": "cable/test/cut_inner_insulation/005.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cut_inner_insulation/005_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cut_inner_insulation",
+    "image_id": "cable/test/cut_inner_insulation/012.png",
+    "image_path": "cable/test/cut_inner_insulation/012.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cut_inner_insulation/012_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cut_outer_insulation",
+    "image_id": "cable/test/cut_outer_insulation/007.png",
+    "image_path": "cable/test/cut_outer_insulation/007.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cut_outer_insulation/007_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "cut_outer_insulation",
+    "image_id": "cable/test/cut_outer_insulation/001.png",
+    "image_path": "cable/test/cut_outer_insulation/001.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/cut_outer_insulation/001_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/026.png",
+    "image_path": "cable/test/good/026.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/057.png",
+    "image_path": "cable/test/good/057.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/037.png",
+    "image_path": "cable/test/good/037.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/015.png",
+    "image_path": "cable/test/good/015.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/031.png",
+    "image_path": "cable/test/good/031.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/056.png",
+    "image_path": "cable/test/good/056.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/042.png",
+    "image_path": "cable/test/good/042.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/030.png",
+    "image_path": "cable/test/good/030.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/016.png",
+    "image_path": "cable/test/good/016.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/013.png",
+    "image_path": "cable/test/good/013.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/023.png",
+    "image_path": "cable/test/good/023.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "good",
+    "image_id": "cable/test/good/006.png",
+    "image_path": "cable/test/good/006.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "cable",
+    "defect_type": "missing_cable",
+    "image_id": "cable/test/missing_cable/002.png",
+    "image_path": "cable/test/missing_cable/002.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/missing_cable/002_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "missing_cable",
+    "image_id": "cable/test/missing_cable/003.png",
+    "image_path": "cable/test/missing_cable/003.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/missing_cable/003_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "missing_wire",
+    "image_id": "cable/test/missing_wire/005.png",
+    "image_path": "cable/test/missing_wire/005.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/missing_wire/005_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "missing_wire",
+    "image_id": "cable/test/missing_wire/006.png",
+    "image_path": "cable/test/missing_wire/006.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/missing_wire/006_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "poke_insulation",
+    "image_id": "cable/test/poke_insulation/009.png",
+    "image_path": "cable/test/poke_insulation/009.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/poke_insulation/009_mask.png"
+  },
+  {
+    "category": "cable",
+    "defect_type": "poke_insulation",
+    "image_id": "cable/test/poke_insulation/003.png",
+    "image_path": "cable/test/poke_insulation/003.png",
+    "label": 1,
+    "mask_path": "cable/ground_truth/poke_insulation/003_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "crack",
+    "image_id": "capsule/test/crack/005.png",
+    "image_path": "capsule/test/crack/005.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/crack/005_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "crack",
+    "image_id": "capsule/test/crack/006.png",
+    "image_path": "capsule/test/crack/006.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/crack/006_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "crack",
+    "image_id": "capsule/test/crack/020.png",
+    "image_path": "capsule/test/crack/020.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/crack/020_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "crack",
+    "image_id": "capsule/test/crack/008.png",
+    "image_path": "capsule/test/crack/008.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/crack/008_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "crack",
+    "image_id": "capsule/test/crack/007.png",
+    "image_path": "capsule/test/crack/007.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/crack/007_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "faulty_imprint",
+    "image_id": "capsule/test/faulty_imprint/002.png",
+    "image_path": "capsule/test/faulty_imprint/002.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/faulty_imprint/002_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "faulty_imprint",
+    "image_id": "capsule/test/faulty_imprint/007.png",
+    "image_path": "capsule/test/faulty_imprint/007.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/faulty_imprint/007_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "faulty_imprint",
+    "image_id": "capsule/test/faulty_imprint/012.png",
+    "image_path": "capsule/test/faulty_imprint/012.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/faulty_imprint/012_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "faulty_imprint",
+    "image_id": "capsule/test/faulty_imprint/014.png",
+    "image_path": "capsule/test/faulty_imprint/014.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/faulty_imprint/014_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "good",
+    "image_id": "capsule/test/good/008.png",
+    "image_path": "capsule/test/good/008.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "capsule",
+    "defect_type": "good",
+    "image_id": "capsule/test/good/019.png",
+    "image_path": "capsule/test/good/019.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "capsule",
+    "defect_type": "good",
+    "image_id": "capsule/test/good/020.png",
+    "image_path": "capsule/test/good/020.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "capsule",
+    "defect_type": "good",
+    "image_id": "capsule/test/good/009.png",
+    "image_path": "capsule/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "capsule",
+    "defect_type": "good",
+    "image_id": "capsule/test/good/017.png",
+    "image_path": "capsule/test/good/017.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "capsule",
+    "defect_type": "poke",
+    "image_id": "capsule/test/poke/017.png",
+    "image_path": "capsule/test/poke/017.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/poke/017_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "poke",
+    "image_id": "capsule/test/poke/014.png",
+    "image_path": "capsule/test/poke/014.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/poke/014_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "poke",
+    "image_id": "capsule/test/poke/006.png",
+    "image_path": "capsule/test/poke/006.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/poke/006_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "poke",
+    "image_id": "capsule/test/poke/016.png",
+    "image_path": "capsule/test/poke/016.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/poke/016_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "scratch",
+    "image_id": "capsule/test/scratch/017.png",
+    "image_path": "capsule/test/scratch/017.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/scratch/017_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "scratch",
+    "image_id": "capsule/test/scratch/004.png",
+    "image_path": "capsule/test/scratch/004.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/scratch/004_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "scratch",
+    "image_id": "capsule/test/scratch/000.png",
+    "image_path": "capsule/test/scratch/000.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/scratch/000_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "scratch",
+    "image_id": "capsule/test/scratch/005.png",
+    "image_path": "capsule/test/scratch/005.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/scratch/005_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "scratch",
+    "image_id": "capsule/test/scratch/002.png",
+    "image_path": "capsule/test/scratch/002.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/scratch/002_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "squeeze",
+    "image_id": "capsule/test/squeeze/010.png",
+    "image_path": "capsule/test/squeeze/010.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/squeeze/010_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "squeeze",
+    "image_id": "capsule/test/squeeze/018.png",
+    "image_path": "capsule/test/squeeze/018.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/squeeze/018_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "squeeze",
+    "image_id": "capsule/test/squeeze/015.png",
+    "image_path": "capsule/test/squeeze/015.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/squeeze/015_mask.png"
+  },
+  {
+    "category": "capsule",
+    "defect_type": "squeeze",
+    "image_id": "capsule/test/squeeze/004.png",
+    "image_path": "capsule/test/squeeze/004.png",
+    "label": 1,
+    "mask_path": "capsule/ground_truth/squeeze/004_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "color",
+    "image_id": "carpet/test/color/003.png",
+    "image_path": "carpet/test/color/003.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/color/003_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "color",
+    "image_id": "carpet/test/color/018.png",
+    "image_path": "carpet/test/color/018.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/color/018_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "color",
+    "image_id": "carpet/test/color/013.png",
+    "image_path": "carpet/test/color/013.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/color/013_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "color",
+    "image_id": "carpet/test/color/005.png",
+    "image_path": "carpet/test/color/005.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/color/005_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "cut",
+    "image_id": "carpet/test/cut/004.png",
+    "image_path": "carpet/test/cut/004.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/cut/004_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "cut",
+    "image_id": "carpet/test/cut/005.png",
+    "image_path": "carpet/test/cut/005.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/cut/005_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "cut",
+    "image_id": "carpet/test/cut/003.png",
+    "image_path": "carpet/test/cut/003.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/cut/003_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/018.png",
+    "image_path": "carpet/test/good/018.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/009.png",
+    "image_path": "carpet/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/001.png",
+    "image_path": "carpet/test/good/001.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/002.png",
+    "image_path": "carpet/test/good/002.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/000.png",
+    "image_path": "carpet/test/good/000.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "good",
+    "image_id": "carpet/test/good/014.png",
+    "image_path": "carpet/test/good/014.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "carpet",
+    "defect_type": "hole",
+    "image_id": "carpet/test/hole/000.png",
+    "image_path": "carpet/test/hole/000.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/hole/000_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "hole",
+    "image_id": "carpet/test/hole/014.png",
+    "image_path": "carpet/test/hole/014.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/hole/014_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "hole",
+    "image_id": "carpet/test/hole/008.png",
+    "image_path": "carpet/test/hole/008.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/hole/008_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "metal_contamination",
+    "image_id": "carpet/test/metal_contamination/014.png",
+    "image_path": "carpet/test/metal_contamination/014.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/metal_contamination/014_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "metal_contamination",
+    "image_id": "carpet/test/metal_contamination/007.png",
+    "image_path": "carpet/test/metal_contamination/007.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/metal_contamination/007_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "metal_contamination",
+    "image_id": "carpet/test/metal_contamination/003.png",
+    "image_path": "carpet/test/metal_contamination/003.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/metal_contamination/003_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "thread",
+    "image_id": "carpet/test/thread/018.png",
+    "image_path": "carpet/test/thread/018.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/thread/018_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "thread",
+    "image_id": "carpet/test/thread/011.png",
+    "image_path": "carpet/test/thread/011.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/thread/011_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "thread",
+    "image_id": "carpet/test/thread/013.png",
+    "image_path": "carpet/test/thread/013.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/thread/013_mask.png"
+  },
+  {
+    "category": "carpet",
+    "defect_type": "thread",
+    "image_id": "carpet/test/thread/015.png",
+    "image_path": "carpet/test/thread/015.png",
+    "label": 1,
+    "mask_path": "carpet/ground_truth/thread/015_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "bent",
+    "image_id": "grid/test/bent/011.png",
+    "image_path": "grid/test/bent/011.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/bent/011_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "bent",
+    "image_id": "grid/test/bent/004.png",
+    "image_path": "grid/test/bent/004.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/bent/004_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "broken",
+    "image_id": "grid/test/broken/008.png",
+    "image_path": "grid/test/broken/008.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/broken/008_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "broken",
+    "image_id": "grid/test/broken/001.png",
+    "image_path": "grid/test/broken/001.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/broken/001_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "glue",
+    "image_id": "grid/test/glue/001.png",
+    "image_path": "grid/test/glue/001.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/glue/001_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "glue",
+    "image_id": "grid/test/glue/002.png",
+    "image_path": "grid/test/glue/002.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/glue/002_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "good",
+    "image_id": "grid/test/good/001.png",
+    "image_path": "grid/test/good/001.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "grid",
+    "defect_type": "good",
+    "image_id": "grid/test/good/016.png",
+    "image_path": "grid/test/good/016.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "grid",
+    "defect_type": "good",
+    "image_id": "grid/test/good/005.png",
+    "image_path": "grid/test/good/005.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "grid",
+    "defect_type": "good",
+    "image_id": "grid/test/good/000.png",
+    "image_path": "grid/test/good/000.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "grid",
+    "defect_type": "metal_contamination",
+    "image_id": "grid/test/metal_contamination/007.png",
+    "image_path": "grid/test/metal_contamination/007.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/metal_contamination/007_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "metal_contamination",
+    "image_id": "grid/test/metal_contamination/006.png",
+    "image_path": "grid/test/metal_contamination/006.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/metal_contamination/006_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "thread",
+    "image_id": "grid/test/thread/004.png",
+    "image_path": "grid/test/thread/004.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/thread/004_mask.png"
+  },
+  {
+    "category": "grid",
+    "defect_type": "thread",
+    "image_id": "grid/test/thread/003.png",
+    "image_path": "grid/test/thread/003.png",
+    "label": 1,
+    "mask_path": "grid/ground_truth/thread/003_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "crack",
+    "image_id": "hazelnut/test/crack/016.png",
+    "image_path": "hazelnut/test/crack/016.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/crack/016_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "crack",
+    "image_id": "hazelnut/test/crack/003.png",
+    "image_path": "hazelnut/test/crack/003.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/crack/003_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "crack",
+    "image_id": "hazelnut/test/crack/011.png",
+    "image_path": "hazelnut/test/crack/011.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/crack/011_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "crack",
+    "image_id": "hazelnut/test/crack/007.png",
+    "image_path": "hazelnut/test/crack/007.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/crack/007_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "cut",
+    "image_id": "hazelnut/test/cut/006.png",
+    "image_path": "hazelnut/test/cut/006.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/cut/006_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "cut",
+    "image_id": "hazelnut/test/cut/007.png",
+    "image_path": "hazelnut/test/cut/007.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/cut/007_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "cut",
+    "image_id": "hazelnut/test/cut/003.png",
+    "image_path": "hazelnut/test/cut/003.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/cut/003_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/023.png",
+    "image_path": "hazelnut/test/good/023.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/020.png",
+    "image_path": "hazelnut/test/good/020.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/011.png",
+    "image_path": "hazelnut/test/good/011.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/030.png",
+    "image_path": "hazelnut/test/good/030.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/012.png",
+    "image_path": "hazelnut/test/good/012.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/024.png",
+    "image_path": "hazelnut/test/good/024.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/034.png",
+    "image_path": "hazelnut/test/good/034.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "good",
+    "image_id": "hazelnut/test/good/009.png",
+    "image_path": "hazelnut/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "hole",
+    "image_id": "hazelnut/test/hole/002.png",
+    "image_path": "hazelnut/test/hole/002.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/hole/002_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "hole",
+    "image_id": "hazelnut/test/hole/014.png",
+    "image_path": "hazelnut/test/hole/014.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/hole/014_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "hole",
+    "image_id": "hazelnut/test/hole/013.png",
+    "image_path": "hazelnut/test/hole/013.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/hole/013_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "hole",
+    "image_id": "hazelnut/test/hole/001.png",
+    "image_path": "hazelnut/test/hole/001.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/hole/001_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "print",
+    "image_id": "hazelnut/test/print/002.png",
+    "image_path": "hazelnut/test/print/002.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/print/002_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "print",
+    "image_id": "hazelnut/test/print/015.png",
+    "image_path": "hazelnut/test/print/015.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/print/015_mask.png"
+  },
+  {
+    "category": "hazelnut",
+    "defect_type": "print",
+    "image_id": "hazelnut/test/print/003.png",
+    "image_path": "hazelnut/test/print/003.png",
+    "label": 1,
+    "mask_path": "hazelnut/ground_truth/print/003_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "color",
+    "image_id": "leather/test/color/001.png",
+    "image_path": "leather/test/color/001.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/color/001_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "color",
+    "image_id": "leather/test/color/012.png",
+    "image_path": "leather/test/color/012.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/color/012_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "color",
+    "image_id": "leather/test/color/013.png",
+    "image_path": "leather/test/color/013.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/color/013_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "color",
+    "image_id": "leather/test/color/006.png",
+    "image_path": "leather/test/color/006.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/color/006_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "cut",
+    "image_id": "leather/test/cut/011.png",
+    "image_path": "leather/test/cut/011.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/cut/011_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "cut",
+    "image_id": "leather/test/cut/010.png",
+    "image_path": "leather/test/cut/010.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/cut/010_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "cut",
+    "image_id": "leather/test/cut/018.png",
+    "image_path": "leather/test/cut/018.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/cut/018_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "cut",
+    "image_id": "leather/test/cut/016.png",
+    "image_path": "leather/test/cut/016.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/cut/016_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "fold",
+    "image_id": "leather/test/fold/016.png",
+    "image_path": "leather/test/fold/016.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/fold/016_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "fold",
+    "image_id": "leather/test/fold/004.png",
+    "image_path": "leather/test/fold/004.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/fold/004_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "fold",
+    "image_id": "leather/test/fold/000.png",
+    "image_path": "leather/test/fold/000.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/fold/000_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "glue",
+    "image_id": "leather/test/glue/003.png",
+    "image_path": "leather/test/glue/003.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/glue/003_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "glue",
+    "image_id": "leather/test/glue/010.png",
+    "image_path": "leather/test/glue/010.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/glue/010_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "glue",
+    "image_id": "leather/test/glue/009.png",
+    "image_path": "leather/test/glue/009.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/glue/009_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "glue",
+    "image_id": "leather/test/glue/012.png",
+    "image_path": "leather/test/glue/012.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/glue/012_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/017.png",
+    "image_path": "leather/test/good/017.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/029.png",
+    "image_path": "leather/test/good/029.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/028.png",
+    "image_path": "leather/test/good/028.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/027.png",
+    "image_path": "leather/test/good/027.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/015.png",
+    "image_path": "leather/test/good/015.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "good",
+    "image_id": "leather/test/good/020.png",
+    "image_path": "leather/test/good/020.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "leather",
+    "defect_type": "poke",
+    "image_id": "leather/test/poke/004.png",
+    "image_path": "leather/test/poke/004.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/poke/004_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "poke",
+    "image_id": "leather/test/poke/002.png",
+    "image_path": "leather/test/poke/002.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/poke/002_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "poke",
+    "image_id": "leather/test/poke/011.png",
+    "image_path": "leather/test/poke/011.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/poke/011_mask.png"
+  },
+  {
+    "category": "leather",
+    "defect_type": "poke",
+    "image_id": "leather/test/poke/000.png",
+    "image_path": "leather/test/poke/000.png",
+    "label": 1,
+    "mask_path": "leather/ground_truth/poke/000_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "bent",
+    "image_id": "metal_nut/test/bent/008.png",
+    "image_path": "metal_nut/test/bent/008.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/bent/008_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "bent",
+    "image_id": "metal_nut/test/bent/011.png",
+    "image_path": "metal_nut/test/bent/011.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/bent/011_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "bent",
+    "image_id": "metal_nut/test/bent/016.png",
+    "image_path": "metal_nut/test/bent/016.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/bent/016_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "bent",
+    "image_id": "metal_nut/test/bent/018.png",
+    "image_path": "metal_nut/test/bent/018.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/bent/018_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "bent",
+    "image_id": "metal_nut/test/bent/009.png",
+    "image_path": "metal_nut/test/bent/009.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/bent/009_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "color",
+    "image_id": "metal_nut/test/color/001.png",
+    "image_path": "metal_nut/test/color/001.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/color/001_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "color",
+    "image_id": "metal_nut/test/color/018.png",
+    "image_path": "metal_nut/test/color/018.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/color/018_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "color",
+    "image_id": "metal_nut/test/color/000.png",
+    "image_path": "metal_nut/test/color/000.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/color/000_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "color",
+    "image_id": "metal_nut/test/color/002.png",
+    "image_path": "metal_nut/test/color/002.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/color/002_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "flip",
+    "image_id": "metal_nut/test/flip/006.png",
+    "image_path": "metal_nut/test/flip/006.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/flip/006_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "flip",
+    "image_id": "metal_nut/test/flip/008.png",
+    "image_path": "metal_nut/test/flip/008.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/flip/008_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "flip",
+    "image_id": "metal_nut/test/flip/021.png",
+    "image_path": "metal_nut/test/flip/021.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/flip/021_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "flip",
+    "image_id": "metal_nut/test/flip/003.png",
+    "image_path": "metal_nut/test/flip/003.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/flip/003_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "flip",
+    "image_id": "metal_nut/test/flip/000.png",
+    "image_path": "metal_nut/test/flip/000.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/flip/000_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "good",
+    "image_id": "metal_nut/test/good/010.png",
+    "image_path": "metal_nut/test/good/010.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "good",
+    "image_id": "metal_nut/test/good/005.png",
+    "image_path": "metal_nut/test/good/005.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "good",
+    "image_id": "metal_nut/test/good/019.png",
+    "image_path": "metal_nut/test/good/019.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "good",
+    "image_id": "metal_nut/test/good/000.png",
+    "image_path": "metal_nut/test/good/000.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "scratch",
+    "image_id": "metal_nut/test/scratch/021.png",
+    "image_path": "metal_nut/test/scratch/021.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/scratch/021_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "scratch",
+    "image_id": "metal_nut/test/scratch/002.png",
+    "image_path": "metal_nut/test/scratch/002.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/scratch/002_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "scratch",
+    "image_id": "metal_nut/test/scratch/003.png",
+    "image_path": "metal_nut/test/scratch/003.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/scratch/003_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "scratch",
+    "image_id": "metal_nut/test/scratch/015.png",
+    "image_path": "metal_nut/test/scratch/015.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/scratch/015_mask.png"
+  },
+  {
+    "category": "metal_nut",
+    "defect_type": "scratch",
+    "image_id": "metal_nut/test/scratch/004.png",
+    "image_path": "metal_nut/test/scratch/004.png",
+    "label": 1,
+    "mask_path": "metal_nut/ground_truth/scratch/004_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "color",
+    "image_id": "pill/test/color/018.png",
+    "image_path": "pill/test/color/018.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/color/018_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "color",
+    "image_id": "pill/test/color/001.png",
+    "image_path": "pill/test/color/001.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/color/001_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "color",
+    "image_id": "pill/test/color/008.png",
+    "image_path": "pill/test/color/008.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/color/008_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "color",
+    "image_id": "pill/test/color/012.png",
+    "image_path": "pill/test/color/012.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/color/012_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "color",
+    "image_id": "pill/test/color/002.png",
+    "image_path": "pill/test/color/002.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/color/002_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "combined",
+    "image_id": "pill/test/combined/014.png",
+    "image_path": "pill/test/combined/014.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/combined/014_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "combined",
+    "image_id": "pill/test/combined/001.png",
+    "image_path": "pill/test/combined/001.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/combined/001_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "combined",
+    "image_id": "pill/test/combined/012.png",
+    "image_path": "pill/test/combined/012.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/combined/012_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "contamination",
+    "image_id": "pill/test/contamination/010.png",
+    "image_path": "pill/test/contamination/010.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/contamination/010_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "contamination",
+    "image_id": "pill/test/contamination/003.png",
+    "image_path": "pill/test/contamination/003.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/contamination/003_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "contamination",
+    "image_id": "pill/test/contamination/017.png",
+    "image_path": "pill/test/contamination/017.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/contamination/017_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "contamination",
+    "image_id": "pill/test/contamination/011.png",
+    "image_path": "pill/test/contamination/011.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/contamination/011_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "crack",
+    "image_id": "pill/test/crack/023.png",
+    "image_path": "pill/test/crack/023.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/crack/023_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "crack",
+    "image_id": "pill/test/crack/016.png",
+    "image_path": "pill/test/crack/016.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/crack/016_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "crack",
+    "image_id": "pill/test/crack/012.png",
+    "image_path": "pill/test/crack/012.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/crack/012_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "crack",
+    "image_id": "pill/test/crack/008.png",
+    "image_path": "pill/test/crack/008.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/crack/008_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "crack",
+    "image_id": "pill/test/crack/020.png",
+    "image_path": "pill/test/crack/020.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/crack/020_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "faulty_imprint",
+    "image_id": "pill/test/faulty_imprint/013.png",
+    "image_path": "pill/test/faulty_imprint/013.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/faulty_imprint/013_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "faulty_imprint",
+    "image_id": "pill/test/faulty_imprint/015.png",
+    "image_path": "pill/test/faulty_imprint/015.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/faulty_imprint/015_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "faulty_imprint",
+    "image_id": "pill/test/faulty_imprint/004.png",
+    "image_path": "pill/test/faulty_imprint/004.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/faulty_imprint/004_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "faulty_imprint",
+    "image_id": "pill/test/faulty_imprint/003.png",
+    "image_path": "pill/test/faulty_imprint/003.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/faulty_imprint/003_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "good",
+    "image_id": "pill/test/good/022.png",
+    "image_path": "pill/test/good/022.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "pill",
+    "defect_type": "good",
+    "image_id": "pill/test/good/009.png",
+    "image_path": "pill/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "pill",
+    "defect_type": "good",
+    "image_id": "pill/test/good/004.png",
+    "image_path": "pill/test/good/004.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "pill",
+    "defect_type": "good",
+    "image_id": "pill/test/good/011.png",
+    "image_path": "pill/test/good/011.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "pill",
+    "defect_type": "good",
+    "image_id": "pill/test/good/018.png",
+    "image_path": "pill/test/good/018.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "pill",
+    "defect_type": "pill_type",
+    "image_id": "pill/test/pill_type/003.png",
+    "image_path": "pill/test/pill_type/003.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/pill_type/003_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "pill_type",
+    "image_id": "pill/test/pill_type/001.png",
+    "image_path": "pill/test/pill_type/001.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/pill_type/001_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "scratch",
+    "image_id": "pill/test/scratch/015.png",
+    "image_path": "pill/test/scratch/015.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/scratch/015_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "scratch",
+    "image_id": "pill/test/scratch/005.png",
+    "image_path": "pill/test/scratch/005.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/scratch/005_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "scratch",
+    "image_id": "pill/test/scratch/003.png",
+    "image_path": "pill/test/scratch/003.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/scratch/003_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "scratch",
+    "image_id": "pill/test/scratch/004.png",
+    "image_path": "pill/test/scratch/004.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/scratch/004_mask.png"
+  },
+  {
+    "category": "pill",
+    "defect_type": "scratch",
+    "image_id": "pill/test/scratch/020.png",
+    "image_path": "pill/test/scratch/020.png",
+    "label": 1,
+    "mask_path": "pill/ground_truth/scratch/020_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/027.png",
+    "image_path": "screw/test/good/027.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/019.png",
+    "image_path": "screw/test/good/019.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/003.png",
+    "image_path": "screw/test/good/003.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/002.png",
+    "image_path": "screw/test/good/002.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/007.png",
+    "image_path": "screw/test/good/007.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/030.png",
+    "image_path": "screw/test/good/030.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/005.png",
+    "image_path": "screw/test/good/005.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "good",
+    "image_id": "screw/test/good/021.png",
+    "image_path": "screw/test/good/021.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "screw",
+    "defect_type": "manipulated_front",
+    "image_id": "screw/test/manipulated_front/004.png",
+    "image_path": "screw/test/manipulated_front/004.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/manipulated_front/004_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "manipulated_front",
+    "image_id": "screw/test/manipulated_front/010.png",
+    "image_path": "screw/test/manipulated_front/010.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/manipulated_front/010_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "manipulated_front",
+    "image_id": "screw/test/manipulated_front/007.png",
+    "image_path": "screw/test/manipulated_front/007.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/manipulated_front/007_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "manipulated_front",
+    "image_id": "screw/test/manipulated_front/023.png",
+    "image_path": "screw/test/manipulated_front/023.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/manipulated_front/023_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "manipulated_front",
+    "image_id": "screw/test/manipulated_front/022.png",
+    "image_path": "screw/test/manipulated_front/022.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/manipulated_front/022_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_head",
+    "image_id": "screw/test/scratch_head/008.png",
+    "image_path": "screw/test/scratch_head/008.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_head/008_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_head",
+    "image_id": "screw/test/scratch_head/002.png",
+    "image_path": "screw/test/scratch_head/002.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_head/002_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_head",
+    "image_id": "screw/test/scratch_head/021.png",
+    "image_path": "screw/test/scratch_head/021.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_head/021_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_head",
+    "image_id": "screw/test/scratch_head/023.png",
+    "image_path": "screw/test/scratch_head/023.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_head/023_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_head",
+    "image_id": "screw/test/scratch_head/006.png",
+    "image_path": "screw/test/scratch_head/006.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_head/006_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_neck",
+    "image_id": "screw/test/scratch_neck/007.png",
+    "image_path": "screw/test/scratch_neck/007.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_neck/007_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_neck",
+    "image_id": "screw/test/scratch_neck/005.png",
+    "image_path": "screw/test/scratch_neck/005.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_neck/005_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_neck",
+    "image_id": "screw/test/scratch_neck/015.png",
+    "image_path": "screw/test/scratch_neck/015.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_neck/015_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_neck",
+    "image_id": "screw/test/scratch_neck/011.png",
+    "image_path": "screw/test/scratch_neck/011.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_neck/011_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "scratch_neck",
+    "image_id": "screw/test/scratch_neck/008.png",
+    "image_path": "screw/test/scratch_neck/008.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/scratch_neck/008_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_side",
+    "image_id": "screw/test/thread_side/021.png",
+    "image_path": "screw/test/thread_side/021.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_side/021_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_side",
+    "image_id": "screw/test/thread_side/013.png",
+    "image_path": "screw/test/thread_side/013.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_side/013_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_side",
+    "image_id": "screw/test/thread_side/009.png",
+    "image_path": "screw/test/thread_side/009.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_side/009_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_side",
+    "image_id": "screw/test/thread_side/001.png",
+    "image_path": "screw/test/thread_side/001.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_side/001_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_side",
+    "image_id": "screw/test/thread_side/011.png",
+    "image_path": "screw/test/thread_side/011.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_side/011_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_top",
+    "image_id": "screw/test/thread_top/019.png",
+    "image_path": "screw/test/thread_top/019.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_top/019_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_top",
+    "image_id": "screw/test/thread_top/021.png",
+    "image_path": "screw/test/thread_top/021.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_top/021_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_top",
+    "image_id": "screw/test/thread_top/013.png",
+    "image_path": "screw/test/thread_top/013.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_top/013_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_top",
+    "image_id": "screw/test/thread_top/009.png",
+    "image_path": "screw/test/thread_top/009.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_top/009_mask.png"
+  },
+  {
+    "category": "screw",
+    "defect_type": "thread_top",
+    "image_id": "screw/test/thread_top/014.png",
+    "image_path": "screw/test/thread_top/014.png",
+    "label": 1,
+    "mask_path": "screw/ground_truth/thread_top/014_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "crack",
+    "image_id": "tile/test/crack/013.png",
+    "image_path": "tile/test/crack/013.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/crack/013_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "crack",
+    "image_id": "tile/test/crack/011.png",
+    "image_path": "tile/test/crack/011.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/crack/011_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "crack",
+    "image_id": "tile/test/crack/006.png",
+    "image_path": "tile/test/crack/006.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/crack/006_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "glue_strip",
+    "image_id": "tile/test/glue_strip/015.png",
+    "image_path": "tile/test/glue_strip/015.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/glue_strip/015_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "glue_strip",
+    "image_id": "tile/test/glue_strip/007.png",
+    "image_path": "tile/test/glue_strip/007.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/glue_strip/007_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "glue_strip",
+    "image_id": "tile/test/glue_strip/013.png",
+    "image_path": "tile/test/glue_strip/013.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/glue_strip/013_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "glue_strip",
+    "image_id": "tile/test/glue_strip/004.png",
+    "image_path": "tile/test/glue_strip/004.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/glue_strip/004_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/017.png",
+    "image_path": "tile/test/good/017.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/026.png",
+    "image_path": "tile/test/good/026.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/031.png",
+    "image_path": "tile/test/good/031.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/011.png",
+    "image_path": "tile/test/good/011.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/007.png",
+    "image_path": "tile/test/good/007.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/015.png",
+    "image_path": "tile/test/good/015.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "good",
+    "image_id": "tile/test/good/010.png",
+    "image_path": "tile/test/good/010.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "tile",
+    "defect_type": "gray_stroke",
+    "image_id": "tile/test/gray_stroke/008.png",
+    "image_path": "tile/test/gray_stroke/008.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/gray_stroke/008_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "gray_stroke",
+    "image_id": "tile/test/gray_stroke/005.png",
+    "image_path": "tile/test/gray_stroke/005.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/gray_stroke/005_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "gray_stroke",
+    "image_id": "tile/test/gray_stroke/000.png",
+    "image_path": "tile/test/gray_stroke/000.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/gray_stroke/000_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "oil",
+    "image_id": "tile/test/oil/004.png",
+    "image_path": "tile/test/oil/004.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/oil/004_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "oil",
+    "image_id": "tile/test/oil/010.png",
+    "image_path": "tile/test/oil/010.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/oil/010_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "oil",
+    "image_id": "tile/test/oil/000.png",
+    "image_path": "tile/test/oil/000.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/oil/000_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "oil",
+    "image_id": "tile/test/oil/012.png",
+    "image_path": "tile/test/oil/012.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/oil/012_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "rough",
+    "image_id": "tile/test/rough/004.png",
+    "image_path": "tile/test/rough/004.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/rough/004_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "rough",
+    "image_id": "tile/test/rough/000.png",
+    "image_path": "tile/test/rough/000.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/rough/000_mask.png"
+  },
+  {
+    "category": "tile",
+    "defect_type": "rough",
+    "image_id": "tile/test/rough/002.png",
+    "image_path": "tile/test/rough/002.png",
+    "label": 1,
+    "mask_path": "tile/ground_truth/rough/002_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/022.png",
+    "image_path": "toothbrush/test/defective/022.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/022_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/000.png",
+    "image_path": "toothbrush/test/defective/000.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/000_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/023.png",
+    "image_path": "toothbrush/test/defective/023.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/023_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/009.png",
+    "image_path": "toothbrush/test/defective/009.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/009_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/017.png",
+    "image_path": "toothbrush/test/defective/017.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/017_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "defective",
+    "image_id": "toothbrush/test/defective/027.png",
+    "image_path": "toothbrush/test/defective/027.png",
+    "label": 1,
+    "mask_path": "toothbrush/ground_truth/defective/027_mask.png"
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "good",
+    "image_id": "toothbrush/test/good/005.png",
+    "image_path": "toothbrush/test/good/005.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "toothbrush",
+    "defect_type": "good",
+    "image_id": "toothbrush/test/good/009.png",
+    "image_path": "toothbrush/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "bent_lead",
+    "image_id": "transistor/test/bent_lead/000.png",
+    "image_path": "transistor/test/bent_lead/000.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/bent_lead/000_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "bent_lead",
+    "image_id": "transistor/test/bent_lead/002.png",
+    "image_path": "transistor/test/bent_lead/002.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/bent_lead/002_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "cut_lead",
+    "image_id": "transistor/test/cut_lead/005.png",
+    "image_path": "transistor/test/cut_lead/005.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/cut_lead/005_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "cut_lead",
+    "image_id": "transistor/test/cut_lead/006.png",
+    "image_path": "transistor/test/cut_lead/006.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/cut_lead/006_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "damaged_case",
+    "image_id": "transistor/test/damaged_case/007.png",
+    "image_path": "transistor/test/damaged_case/007.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/damaged_case/007_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "damaged_case",
+    "image_id": "transistor/test/damaged_case/004.png",
+    "image_path": "transistor/test/damaged_case/004.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/damaged_case/004_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/021.png",
+    "image_path": "transistor/test/good/021.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/048.png",
+    "image_path": "transistor/test/good/048.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/040.png",
+    "image_path": "transistor/test/good/040.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/012.png",
+    "image_path": "transistor/test/good/012.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/015.png",
+    "image_path": "transistor/test/good/015.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/039.png",
+    "image_path": "transistor/test/good/039.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/059.png",
+    "image_path": "transistor/test/good/059.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/036.png",
+    "image_path": "transistor/test/good/036.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/056.png",
+    "image_path": "transistor/test/good/056.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/026.png",
+    "image_path": "transistor/test/good/026.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/042.png",
+    "image_path": "transistor/test/good/042.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "good",
+    "image_id": "transistor/test/good/008.png",
+    "image_path": "transistor/test/good/008.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "transistor",
+    "defect_type": "misplaced",
+    "image_id": "transistor/test/misplaced/001.png",
+    "image_path": "transistor/test/misplaced/001.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/misplaced/001_mask.png"
+  },
+  {
+    "category": "transistor",
+    "defect_type": "misplaced",
+    "image_id": "transistor/test/misplaced/008.png",
+    "image_path": "transistor/test/misplaced/008.png",
+    "label": 1,
+    "mask_path": "transistor/ground_truth/misplaced/008_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "color",
+    "image_id": "wood/test/color/007.png",
+    "image_path": "wood/test/color/007.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/color/007_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "color",
+    "image_id": "wood/test/color/004.png",
+    "image_path": "wood/test/color/004.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/color/004_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "combined",
+    "image_id": "wood/test/combined/001.png",
+    "image_path": "wood/test/combined/001.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/combined/001_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "combined",
+    "image_id": "wood/test/combined/005.png",
+    "image_path": "wood/test/combined/005.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/combined/005_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "good",
+    "image_id": "wood/test/good/001.png",
+    "image_path": "wood/test/good/001.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "wood",
+    "defect_type": "good",
+    "image_id": "wood/test/good/016.png",
+    "image_path": "wood/test/good/016.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "wood",
+    "defect_type": "good",
+    "image_id": "wood/test/good/015.png",
+    "image_path": "wood/test/good/015.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "wood",
+    "defect_type": "good",
+    "image_id": "wood/test/good/003.png",
+    "image_path": "wood/test/good/003.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "wood",
+    "defect_type": "hole",
+    "image_id": "wood/test/hole/008.png",
+    "image_path": "wood/test/hole/008.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/hole/008_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "hole",
+    "image_id": "wood/test/hole/007.png",
+    "image_path": "wood/test/hole/007.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/hole/007_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "liquid",
+    "image_id": "wood/test/liquid/001.png",
+    "image_path": "wood/test/liquid/001.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/liquid/001_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "liquid",
+    "image_id": "wood/test/liquid/006.png",
+    "image_path": "wood/test/liquid/006.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/liquid/006_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "scratch",
+    "image_id": "wood/test/scratch/016.png",
+    "image_path": "wood/test/scratch/016.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/scratch/016_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "scratch",
+    "image_id": "wood/test/scratch/007.png",
+    "image_path": "wood/test/scratch/007.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/scratch/007_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "scratch",
+    "image_id": "wood/test/scratch/000.png",
+    "image_path": "wood/test/scratch/000.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/scratch/000_mask.png"
+  },
+  {
+    "category": "wood",
+    "defect_type": "scratch",
+    "image_id": "wood/test/scratch/012.png",
+    "image_path": "wood/test/scratch/012.png",
+    "label": 1,
+    "mask_path": "wood/ground_truth/scratch/012_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "broken_teeth",
+    "image_id": "zipper/test/broken_teeth/008.png",
+    "image_path": "zipper/test/broken_teeth/008.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/broken_teeth/008_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "broken_teeth",
+    "image_id": "zipper/test/broken_teeth/016.png",
+    "image_path": "zipper/test/broken_teeth/016.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/broken_teeth/016_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "broken_teeth",
+    "image_id": "zipper/test/broken_teeth/001.png",
+    "image_path": "zipper/test/broken_teeth/001.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/broken_teeth/001_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "broken_teeth",
+    "image_id": "zipper/test/broken_teeth/003.png",
+    "image_path": "zipper/test/broken_teeth/003.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/broken_teeth/003_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "combined",
+    "image_id": "zipper/test/combined/006.png",
+    "image_path": "zipper/test/combined/006.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/combined/006_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "combined",
+    "image_id": "zipper/test/combined/008.png",
+    "image_path": "zipper/test/combined/008.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/combined/008_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "combined",
+    "image_id": "zipper/test/combined/004.png",
+    "image_path": "zipper/test/combined/004.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/combined/004_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_border",
+    "image_id": "zipper/test/fabric_border/012.png",
+    "image_path": "zipper/test/fabric_border/012.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_border/012_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_border",
+    "image_id": "zipper/test/fabric_border/007.png",
+    "image_path": "zipper/test/fabric_border/007.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_border/007_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_border",
+    "image_id": "zipper/test/fabric_border/009.png",
+    "image_path": "zipper/test/fabric_border/009.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_border/009_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_interior",
+    "image_id": "zipper/test/fabric_interior/008.png",
+    "image_path": "zipper/test/fabric_interior/008.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_interior/008_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_interior",
+    "image_id": "zipper/test/fabric_interior/006.png",
+    "image_path": "zipper/test/fabric_interior/006.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_interior/006_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "fabric_interior",
+    "image_id": "zipper/test/fabric_interior/010.png",
+    "image_path": "zipper/test/fabric_interior/010.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/fabric_interior/010_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/007.png",
+    "image_path": "zipper/test/good/007.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/003.png",
+    "image_path": "zipper/test/good/003.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/022.png",
+    "image_path": "zipper/test/good/022.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/021.png",
+    "image_path": "zipper/test/good/021.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/027.png",
+    "image_path": "zipper/test/good/027.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "good",
+    "image_id": "zipper/test/good/009.png",
+    "image_path": "zipper/test/good/009.png",
+    "label": 0,
+    "mask_path": null
+  },
+  {
+    "category": "zipper",
+    "defect_type": "rough",
+    "image_id": "zipper/test/rough/010.png",
+    "image_path": "zipper/test/rough/010.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/rough/010_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "rough",
+    "image_id": "zipper/test/rough/002.png",
+    "image_path": "zipper/test/rough/002.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/rough/002_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "rough",
+    "image_id": "zipper/test/rough/006.png",
+    "image_path": "zipper/test/rough/006.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/rough/006_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "split_teeth",
+    "image_id": "zipper/test/split_teeth/005.png",
+    "image_path": "zipper/test/split_teeth/005.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/split_teeth/005_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "split_teeth",
+    "image_id": "zipper/test/split_teeth/015.png",
+    "image_path": "zipper/test/split_teeth/015.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/split_teeth/015_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "split_teeth",
+    "image_id": "zipper/test/split_teeth/011.png",
+    "image_path": "zipper/test/split_teeth/011.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/split_teeth/011_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "split_teeth",
+    "image_id": "zipper/test/split_teeth/001.png",
+    "image_path": "zipper/test/split_teeth/001.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/split_teeth/001_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "squeezed_teeth",
+    "image_id": "zipper/test/squeezed_teeth/014.png",
+    "image_path": "zipper/test/squeezed_teeth/014.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/squeezed_teeth/014_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "squeezed_teeth",
+    "image_id": "zipper/test/squeezed_teeth/008.png",
+    "image_path": "zipper/test/squeezed_teeth/008.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/squeezed_teeth/008_mask.png"
+  },
+  {
+    "category": "zipper",
+    "defect_type": "squeezed_teeth",
+    "image_id": "zipper/test/squeezed_teeth/003.png",
+    "image_path": "zipper/test/squeezed_teeth/003.png",
+    "label": 1,
+    "mask_path": "zipper/ground_truth/squeezed_teeth/003_mask.png"
+  }
+]

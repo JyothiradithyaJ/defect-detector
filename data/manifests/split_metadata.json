@@ -1,0 +1,51 @@
+{
+  "calibration": {
+    "counts": {
+      "defective_label_1": 250,
+      "good_label_0": 93,
+      "total": 343
+    },
+    "path": "calibration.json",
+    "sha256": "25a8019987085684a62c2570fdbd0275706ae3b6f1ec8984e5656a9580ebbb24"
+  },
+  "calibration_fraction": 0.2,
+  "categories": [
+    "bottle",
+    "cable",
+    "capsule",
+    "carpet",
+    "grid",
+    "hazelnut",
+    "leather",
+    "metal_nut",
+    "pill",
+    "screw",
+    "tile",
+    "toothbrush",
+    "transistor",
+    "wood",
+    "zipper"
+  ],
+  "data_root": "C:\\Users\\JYOTHIRADITHYA J\\Downloads\\defect-detector\\data\\mvtec_ad",
+  "dataset": "MVTec AD",
+  "evaluation": {
+    "counts": {
+      "defective_label_1": 1008,
+      "good_label_0": 374,
+      "total": 1382
+    },
+    "path": "evaluation.json",
+    "sha256": "d41be2398761a3c7157e779eb7ef7c6c9d5b9b4882569bcce1e55debf18610e2"
+  },
+  "seed": 42,
+  "split_policy": "Official train/good images are reference data. Official test images are split independently within each category and defect type using a deterministic SHA-256 ordering.",
+  "train_reference": {
+    "counts": {
+      "defective_label_1": 0,
+      "good_label_0": 3629,
+      "total": 3629
+    },
+    "path": "train_reference.json",
+    "sha256": "00bcb64e08ef28e80b40e6ee6fc30a4ab362a44ce6608429d9cc1eb38c75072e"
+  }
+}

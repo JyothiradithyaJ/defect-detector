@@ -6,3 +6,5 @@ data/prompt_cache/
 artifacts/evaluations/
 *.onnx
 .env
+.pytest_cache/
+backend/.pytest-tmp/
