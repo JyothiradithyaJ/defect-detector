@@ -1,4 +1,4 @@
-"""Frozen OpenCLIP ViT-B/32 image and text encoder."""
+"""Frozen OpenCLIP encoder with multi-layer patch features."""
 
 from dataclasses import dataclass
 from typing import Callable
@@ -13,13 +13,16 @@ PRETRAINED_CHECKPOINT = "openai"
 EMBEDDING_DIM = 512
 PATCH_GRID_SIZE = 7
 PATCH_COUNT = PATCH_GRID_SIZE * PATCH_GRID_SIZE
+INTERMEDIATE_LAYER_COUNT = 3
+
 
 @dataclass(frozen=True)
 class ImageEmbeddings:
-    """Global and spatial CLIP embeddings for one image batch."""
+    """Global and multi-layer spatial CLIP embeddings."""
 
-    global_embedding: torch.Tensor  # [batch, 512]
-    patch_embeddings: torch.Tensor  # [batch, 49, 512]
+    global_embedding: torch.Tensor
+    patch_embeddings: torch.Tensor
+    patch_embeddings_by_layer: tuple[torch.Tensor, ...] = ()
 
 
 class CLIPEncoder:
@@ -40,7 +43,6 @@ class CLIPEncoder:
             parameter.requires_grad_(False)
 
     def prepare_image(self, image: Image.Image) -> torch.Tensor:
-        """Convert one PIL image into a preprocessed batch tensor."""
         return self.preprocess(image.convert("RGB")).unsqueeze(0)
 
     @torch.inference_mode()
@@ -51,26 +53,28 @@ class CLIPEncoder:
             )
 
         image_batch = image_batch.to(self.device)
-
         outputs = self.model.forward_intermediates(
             image=image_batch,
-            image_indices=1,
+            image_indices=INTERMEDIATE_LAYER_COUNT,
             normalize=True,
             normalize_intermediates=True,
             image_output_fmt="NLC",
         )
 
         global_embedding = outputs["image_features"]
-        final_patch_tokens = outputs["image_intermediates"][-1]
-
+        intermediates = outputs["image_intermediates"]
         projection = self.model.visual.proj
         if projection is None:
             raise RuntimeError("ViT-B/32 visual projection is unavailable.")
 
-        patch_embeddings = functional.normalize(
-            final_patch_tokens @ projection,
-            dim=-1,
+        projected_layers = tuple(
+            functional.normalize(layer @ projection, dim=-1)
+            for layer in intermediates
         )
+        if not projected_layers:
+            raise RuntimeError("CLIP returned no intermediate image features.")
+
+        patch_embeddings = projected_layers[-1]
 
         if global_embedding.shape[-1] != EMBEDDING_DIM:
             raise RuntimeError(
@@ -87,11 +91,12 @@ class CLIPEncoder:
         return ImageEmbeddings(
             global_embedding=global_embedding,
             patch_embeddings=patch_embeddings,
+            patch_embeddings_by_layer=projected_layers,
         )
 
     @torch.inference_mode()
     def encode_text(self, prompts: list[str]) -> torch.Tensor:
-        """Return normalized text embeddings for a list of prompts."""
+        if not prompts:
+            raise ValueError("At least one text prompt is required.")
         tokens = self.tokenizer(prompts).to(self.device)
         return self.model.encode_text(tokens, normalize=True)
-        

@@ -1,4 +1,4 @@
-
+"""Language + visual-reference anomaly score fusion."""
 
 from __future__ import annotations
 
@@ -7,160 +7,118 @@ from dataclasses import dataclass
 import torch
 import torch.nn.functional as functional
 
-from app.core.clip_encoder import (
-    EMBEDDING_DIM,
-    PATCH_COUNT,
-    PATCH_GRID_SIZE,
-    ImageEmbeddings,
-)
+from app.core.clip_encoder import EMBEDDING_DIM, PATCH_COUNT, PATCH_GRID_SIZE, ImageEmbeddings
 from app.core.prompts import PromptEmbeddings
+from app.core.reference_bank import ReferenceScore
 
-
-ALPHA = 0.5
+GLOBAL_WEIGHT = 0.35
+LOCAL_WEIGHT = 0.65
+REFERENCE_WEIGHT = 0.50
+LOCAL_TOP_FRACTION = 0.10
 
 
 @dataclass(frozen=True)
 class FusionResult:
-  
-
-    normal_global: torch.Tensor          # [batch]
-    anomalous_global: torch.Tensor       # [batch]
-    normal_local: torch.Tensor           # [batch]
-    anomalous_local: torch.Tensor        # [batch]
-
-    normal_patch_grid: torch.Tensor      # [batch, 7, 7]
-    anomalous_patch_grid: torch.Tensor   # [batch, 7, 7]
-
-    normal_fused: torch.Tensor           # [batch]
-    anomalous_fused: torch.Tensor        # [batch]
-
-    defect_logit: torch.Tensor           # [batch]
-    heatmap: torch.Tensor                # [batch, 7, 7]
+    normal_global: torch.Tensor
+    anomalous_global: torch.Tensor
+    normal_local: torch.Tensor
+    anomalous_local: torch.Tensor
+    reference_local: torch.Tensor
+    reference_image: torch.Tensor
+    normal_patch_grid: torch.Tensor
+    anomalous_patch_grid: torch.Tensor
+    heatmap: torch.Tensor
+    normal_fused: torch.Tensor
+    anomalous_fused: torch.Tensor
+    defect_logit: torch.Tensor
 
 
-def _validate_embeddings(
-    image_embeddings: ImageEmbeddings,
-    prompt_embeddings: PromptEmbeddings,
-) -> None:
-    """Validate tensor shapes before similarity scoring."""
+def _validate_embeddings(image_embeddings: ImageEmbeddings, prompt_embeddings: PromptEmbeddings) -> None:
     global_embedding = image_embeddings.global_embedding
-    patch_embeddings = image_embeddings.patch_embeddings
-
-    if global_embedding.ndim != 2:
-        raise ValueError("Global embedding must have shape [batch, 512].")
-
-    if global_embedding.shape[1] != EMBEDDING_DIM:
-        raise ValueError(
-            f"Global embedding must have {EMBEDDING_DIM} dimensions."
-        )
-
-    if patch_embeddings.ndim != 3:
-        raise ValueError(
-            "Patch embeddings must have shape [batch, 49, 512]."
-        )
-
-    if patch_embeddings.shape[0] != global_embedding.shape[0]:
+    patches = image_embeddings.patch_embeddings
+    if global_embedding.ndim != 2 or global_embedding.shape[1] != EMBEDDING_DIM:
+        raise ValueError(f"Global embedding must have shape [batch, {EMBEDDING_DIM}].")
+    if patches.ndim != 3 or patches.shape[1:] != (PATCH_COUNT, EMBEDDING_DIM):
+        raise ValueError(f"Patch embeddings must have shape [batch, {PATCH_COUNT}, {EMBEDDING_DIM}].")
+    if patches.shape[0] != global_embedding.shape[0]:
         raise ValueError("Global and patch embeddings must have the same batch size.")
-
-    if patch_embeddings.shape[1:] != (PATCH_COUNT, EMBEDDING_DIM):
-        raise ValueError(
-            f"Patch embeddings must have shape [batch, {PATCH_COUNT}, "
-            f"{EMBEDDING_DIM}]."
-        )
-
-    if prompt_embeddings.normal.shape != (EMBEDDING_DIM,):
-        raise ValueError(
-            f"Normal prompt embedding must have shape [{EMBEDDING_DIM}]."
-        )
-
-    if prompt_embeddings.anomalous.shape != (EMBEDDING_DIM,):
-        raise ValueError(
-            f"Anomalous prompt embedding must have shape [{EMBEDDING_DIM}]."
-        )
+    if prompt_embeddings.normal.shape != (EMBEDDING_DIM,) or prompt_embeddings.anomalous.shape != (EMBEDDING_DIM,):
+        raise ValueError("Prompt embeddings must each have shape [512].")
 
 
-def _global_similarity(
-    global_embedding: torch.Tensor,
-    prompt_embedding: torch.Tensor,
-) -> torch.Tensor:
-    """Cosine similarity between each full image and one text prompt."""
-    return functional.cosine_similarity(
-        global_embedding,
-        prompt_embedding.unsqueeze(0),
-        dim=-1,
-    )
+def _global_similarity(x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
+    return functional.cosine_similarity(x, p.unsqueeze(0), dim=-1)
 
 
-def _patch_similarities(
-    patch_embeddings: torch.Tensor,
-    prompt_embedding: torch.Tensor,
-) -> torch.Tensor:
-    """Cosine similarity between every patch and one text prompt."""
-    return functional.cosine_similarity(
-        patch_embeddings,
-        prompt_embedding.view(1, 1, -1),
-        dim=-1,
-    )
+def _patch_similarity(x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
+    return functional.cosine_similarity(x, p.view(1, 1, -1), dim=-1)
+
+
+def _robust_topk(values: torch.Tensor) -> torch.Tensor:
+    count = max(1, int(values.shape[1] * LOCAL_TOP_FRACTION))
+    return values.topk(count, dim=1).values.mean(dim=1)
 
 
 def fuse_scores(
     image_embeddings: ImageEmbeddings,
     prompt_embeddings: PromptEmbeddings,
+    reference_score: ReferenceScore | None = None,
+    global_weight: float = GLOBAL_WEIGHT,
+    local_weight: float = LOCAL_WEIGHT,
+    reference_weight: float = REFERENCE_WEIGHT,
 ) -> FusionResult:
-
     _validate_embeddings(image_embeddings, prompt_embeddings)
+    if min(global_weight, local_weight, reference_weight) < 0:
+        raise ValueError("Fusion weights must be non-negative.")
 
-    normal_global = _global_similarity(
-        image_embeddings.global_embedding,
-        prompt_embeddings.normal,
-    )
-    anomalous_global = _global_similarity(
-        image_embeddings.global_embedding,
-        prompt_embeddings.anomalous,
-    )
+    normal_global = _global_similarity(image_embeddings.global_embedding, prompt_embeddings.normal)
+    anomalous_global = _global_similarity(image_embeddings.global_embedding, prompt_embeddings.anomalous)
 
-    normal_patch_scores = _patch_similarities(
-        image_embeddings.patch_embeddings,
-        prompt_embeddings.normal,
-    )
-    anomalous_patch_scores = _patch_similarities(
-        image_embeddings.patch_embeddings,
-        prompt_embeddings.anomalous,
-    )
+    layers = image_embeddings.patch_embeddings_by_layer or (image_embeddings.patch_embeddings,)
+    normal_maps, anomalous_maps = [], []
+    for patches in layers:
+        normal_maps.append(_patch_similarity(patches, prompt_embeddings.normal))
+        anomalous_maps.append(_patch_similarity(patches, prompt_embeddings.anomalous))
 
-    normal_local = normal_patch_scores.max(dim=1).values
-    anomalous_local = anomalous_patch_scores.max(dim=1).values
+    normal_patch_scores = torch.stack(normal_maps).mean(dim=0)
+    anomalous_patch_scores = torch.stack(anomalous_maps).mean(dim=0)
+    normal_local = _robust_topk(normal_patch_scores)
+    anomalous_local = _robust_topk(anomalous_patch_scores)
 
-    normal_fused = ALPHA * normal_global + (1 - ALPHA) * normal_local
-    anomalous_fused = (
-        ALPHA * anomalous_global + (1 - ALPHA) * anomalous_local
+    reference_local = (
+        reference_score.image_score
+        if reference_score is not None
+        else torch.zeros_like(anomalous_local)
     )
-
-    defect_logit = anomalous_fused - normal_fused
-
-    normal_patch_grid = normal_patch_scores.reshape(
-        -1,
-        PATCH_GRID_SIZE,
-        PATCH_GRID_SIZE,
-    )
-    anomalous_patch_grid = anomalous_patch_scores.reshape(
-        -1,
-        PATCH_GRID_SIZE,
-        PATCH_GRID_SIZE,
+    reference_heatmap = (
+        reference_score.patch_score
+        if reference_score is not None
+        else torch.zeros_like(anomalous_patch_scores)
     )
 
+    language_score = (
+        global_weight * (anomalous_global - normal_global)
+        + local_weight * (anomalous_local - normal_local)
+    )
+    # Reference distance is positive for anomalous images. Keep it separate
+    # so calibration can learn the relative contribution.
+    defect_logit = language_score + reference_weight * reference_local
 
-    heatmap = anomalous_patch_grid - normal_patch_grid
+    heatmap = (anomalous_patch_scores - normal_patch_scores) + reference_weight * reference_heatmap
+    normal_fused = normal_global + normal_local
+    anomalous_fused = normal_fused + defect_logit
 
     return FusionResult(
         normal_global=normal_global,
         anomalous_global=anomalous_global,
         normal_local=normal_local,
         anomalous_local=anomalous_local,
-        normal_patch_grid=normal_patch_grid,
-        anomalous_patch_grid=anomalous_patch_grid,
+        reference_local=reference_local,
+        reference_image=reference_local,
+        normal_patch_grid=normal_patch_scores.reshape(-1, PATCH_GRID_SIZE, PATCH_GRID_SIZE),
+        anomalous_patch_grid=anomalous_patch_scores.reshape(-1, PATCH_GRID_SIZE, PATCH_GRID_SIZE),
+        heatmap=heatmap.reshape(-1, PATCH_GRID_SIZE, PATCH_GRID_SIZE),
         normal_fused=normal_fused,
         anomalous_fused=anomalous_fused,
         defect_logit=defect_logit,
-        heatmap=heatmap,
     )
