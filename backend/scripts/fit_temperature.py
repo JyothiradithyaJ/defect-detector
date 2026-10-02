@@ -75,21 +75,28 @@ def collect_components(records, data_root, encoder, prompt_bank, reference_bank)
 
 
 def fit_parameters(language, reference, labels):
-    language, reference, labels = language.double(), reference.double(), labels.double()
+    # These tensors may originate from torch.inference_mode(); clone them into
+    # ordinary tensors before LBFGS needs them for its backward pass.
+    language = language.detach().clone().double()
+    reference = reference.detach().clone().double()
+    labels = labels.detach().clone().double()
+
+    # The original three-parameter form has a scale redundancy:
+    # (a*language + b*reference) / temperature is unchanged if all three
+    # parameters are multiplied by the same positive constant. Fit the
+    # equivalent identifiable form with reference weight fixed at 1.0.
     log_temperature = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-    log_language = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-    log_reference = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+    log_language_ratio = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
     optimizer = torch.optim.LBFGS(
-        [log_temperature, log_language, log_reference],
+        [log_temperature, log_language_ratio],
         lr=0.1, max_iter=100, line_search_fn="strong_wolfe"
     )
 
     def closure():
         optimizer.zero_grad()
         temperature = log_temperature.exp().clamp(0.05, 20.0)
-        language_weight = log_language.exp().clamp(0.05, 5.0)
-        reference_weight = log_reference.exp().clamp(0.05, 5.0)
-        logits = (language_weight * language + reference_weight * reference) / temperature
+        language_ratio = log_language_ratio.exp()
+        logits = (language_ratio * language + reference) / temperature
         loss = functional.binary_cross_entropy_with_logits(logits, labels)
         loss.backward()
         return loss
@@ -97,9 +104,9 @@ def fit_parameters(language, reference, labels):
     optimizer.step(closure)
     with torch.inference_mode():
         temperature = float(log_temperature.exp().clamp(0.05, 20.0))
-        language_weight = float(log_language.exp().clamp(0.05, 5.0))
-        reference_weight = float(log_reference.exp().clamp(0.05, 5.0))
-        logits = (language_weight * language + reference_weight * reference) / temperature
+        language_weight = float(log_language_ratio.exp())
+        reference_weight = 1.0
+        logits = (language_weight * language + reference) / temperature
         nll = float(functional.binary_cross_entropy_with_logits(logits, labels))
     return temperature, language_weight, reference_weight, nll
 
