@@ -234,15 +234,19 @@ def main() -> None:
         all_logits.extend(r["defect_logit"] for r in scored)
         all_probabilities.extend(r["defect_probability"] for r in scored)
 
+    calibration_reported = args.score_mode == "fused"
     summary = {
         "images": len(all_labels),
         "overall_image_auroc": image_auroc(all_labels, all_logits),
         "macro_image_auroc": float(np.mean([r["image_auroc"] for r in results])),
         "macro_pixel_aupro": float(np.mean([r["pixel_aupro"] for r in results])),
-        "overall_expected_calibration_error": expected_calibration_error(all_probabilities, all_labels),
+        "overall_expected_calibration_error": (
+            expected_calibration_error(all_probabilities, all_labels)
+            if calibration_reported else None
+        ),
         "macro_expected_calibration_error": (
             float(np.mean([r["expected_calibration_error"] for r in results]))
-            if all(r["expected_calibration_error"] is not None for r in results)
+            if calibration_reported and all(r["expected_calibration_error"] is not None for r in results)
             else None
         ),
     }
