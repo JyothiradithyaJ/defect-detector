@@ -44,6 +44,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--categories", nargs="*", default=None)
+    parser.add_argument("--score-mode", choices=("fused", "language", "reference"), default="fused")
+    parser.add_argument("--reference-top-fraction", type=float, default=0.10)
     return parser.parse_args()
 
 
@@ -74,6 +76,7 @@ def score_record(
     prompt_bank: PromptBank,
     reference_bank: NormalReferenceBank,
     calibration,
+    score_mode: str = "fused",
 ) -> dict[str, object]:
     category = str(record["category"])
     label = int(record["label"])
@@ -90,10 +93,14 @@ def score_record(
     language = fuse_scores(embeddings, prompts, reference_score=None)
     language_weight = calibration.language_weight
     reference_weight = calibration.reference_weight
-    defect_logit = (
-        language_weight * language.defect_logit
-        + reference_weight * reference.image_score
-    )
+    if score_mode == "language":
+        defect_logit = language.defect_logit
+    elif score_mode == "reference":
+        defect_logit = reference.image_score
+    elif score_mode == "fused":
+        defect_logit = language_weight * language.defect_logit + reference_weight * reference.image_score
+    else:
+        raise ValueError(f"Unknown score mode: {score_mode}")
     probability = calibrate_probability(defect_logit, calibration.temperature)
 
     width, height = original.size
@@ -112,10 +119,12 @@ def score_record(
     # Language heatmap + reference memory heatmap, using the same learned
     # weights as image-level scoring.
     language_heatmap = language.heatmap
-    combined_heatmap = (
-        language_weight * language_heatmap
-        + reference_weight * reference.patch_score.reshape_as(language_heatmap)
-    )
+    if score_mode == "language":
+        combined_heatmap = language_heatmap
+    elif score_mode == "reference":
+        combined_heatmap = reference.patch_score.reshape_as(language_heatmap)
+    else:
+        combined_heatmap = language_weight * language_heatmap + reference_weight * reference.patch_score.reshape_as(language_heatmap)
     heatmap = resize_heatmap(combined_heatmap, height, width)
 
     return {
@@ -127,6 +136,7 @@ def score_record(
         "reference_score": float(reference.image_score.item()),
         "defect_logit": float(defect_logit.item()),
         "defect_probability": float(probability.item()),
+        "score_mode": score_mode,
         "heatmap": heatmap,
         "ground_truth_mask": gt,
     }
@@ -166,6 +176,7 @@ def main() -> None:
         data_root=args.data_root,
         manifest_path=args.reference_manifest,
         cache_dir=args.reference_cache,
+        top_fraction=args.reference_top_fraction,
     )
 
     results = []
@@ -177,7 +188,8 @@ def main() -> None:
         scored = []
         for record in [r for r in records if str(r["category"]) == category]:
             scored.append(score_record(
-                record, args.data_root, encoder, prompt_bank, reference_bank, calibration
+                record, args.data_root, encoder, prompt_bank, reference_bank, calibration,
+                score_mode=args.score_mode,
             ))
             processed += 1
             if processed % 50 == 0 or processed == len(records):
@@ -204,6 +216,8 @@ def main() -> None:
         "model_name": MODEL_NAME,
         "pretrained_checkpoint": PRETRAINED_CHECKPOINT,
         "device": str(encoder.device),
+        "score_mode": args.score_mode,
+        "reference_top_fraction": args.reference_top_fraction,
         "temperature": calibration.temperature,
         "language_weight": calibration.language_weight,
         "reference_weight": calibration.reference_weight,
