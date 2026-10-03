@@ -9,6 +9,8 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as functional
+
+from app.core.clip_encoder import MODEL_NAME, PRETRAINED_CHECKPOINT
 from PIL import Image
 
 from app.core.clip_encoder import CLIPEncoder, EMBEDDING_DIM, ImageEmbeddings
@@ -31,6 +33,7 @@ class NormalReferenceBank:
         cache_dir: Path,
         max_images_per_category: int | None = None,
         chunk_size: int = 4096,
+        top_fraction: float = 0.10,
     ) -> None:
         self.encoder = encoder
         self.data_root = data_root
@@ -38,14 +41,26 @@ class NormalReferenceBank:
         self.cache_dir = cache_dir
         self.max_images_per_category = max_images_per_category
         self.chunk_size = chunk_size
+        if not 0.0 < top_fraction <= 1.0:
+            raise ValueError("top_fraction must be > 0 and <= 1.")
+        self.top_fraction = top_fraction
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._banks: dict[str, tuple[torch.Tensor, ...]] = {}
         self._manifest_hash = sha256(manifest_path.read_bytes()).hexdigest()
 
     def _path(self, category: str) -> Path:
+        cache_identity = {
+            "manifest_hash": self._manifest_hash,
+            "category": category,
+            "model_name": MODEL_NAME,
+            "pretrained_checkpoint": PRETRAINED_CHECKPOINT,
+            "embedding_dim": EMBEDDING_DIM,
+            "projection_shape": tuple(self.encoder.model.visual.proj.shape),
+            "max_images_per_category": self.max_images_per_category,
+            "top_fraction": self.top_fraction,
+        }
         key = sha256(
-            f"{self._manifest_hash}:{category}:{self.encoder.model.visual.proj.shape}"
-            .encode()
+            json.dumps(cache_identity, sort_keys=True, default=str).encode()
         ).hexdigest()[:20]
         return self.cache_dir / f"{category}_{key}.pt"
 
@@ -135,6 +150,6 @@ class NormalReferenceBank:
 
         patch_score = torch.stack(layer_maps).mean(dim=0)
         flat = patch_score.flatten(start_dim=1)
-        count = max(1, int(flat.shape[1] * 0.10))
+        count = max(1, int(flat.shape[1] * self.top_fraction))
         image_score = flat.topk(count, dim=1).values.mean(dim=1)
         return ReferenceScore(image_score=image_score, patch_score=patch_score)

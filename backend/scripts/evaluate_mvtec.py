@@ -44,6 +44,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--categories", nargs="*", default=None)
+    parser.add_argument("--score-mode", choices=("fused", "language", "reference"), default="fused")
+    parser.add_argument("--reference-top-fraction", type=float, default=0.10)
     return parser.parse_args()
 
 
@@ -74,6 +76,7 @@ def score_record(
     prompt_bank: PromptBank,
     reference_bank: NormalReferenceBank,
     calibration,
+    score_mode: str = "fused",
 ) -> dict[str, object]:
     category = str(record["category"])
     label = int(record["label"])
@@ -90,10 +93,15 @@ def score_record(
     language = fuse_scores(embeddings, prompts, reference_score=None)
     language_weight = calibration.language_weight
     reference_weight = calibration.reference_weight
-    defect_logit = (
-        language_weight * language.defect_logit
-        + reference_weight * reference.image_score
-    )
+    if score_mode == "language":
+        defect_logit = language.defect_logit
+    elif score_mode == "reference":
+        defect_logit = reference.image_score
+    elif score_mode == "fused":
+        defect_logit = language_weight * language.defect_logit + reference_weight * reference.image_score
+    else:
+        raise ValueError(f"Unknown score mode: {score_mode}")
+    calibration_applied = score_mode == "fused"
     probability = calibrate_probability(defect_logit, calibration.temperature)
 
     width, height = original.size
@@ -112,10 +120,12 @@ def score_record(
     # Language heatmap + reference memory heatmap, using the same learned
     # weights as image-level scoring.
     language_heatmap = language.heatmap
-    combined_heatmap = (
-        language_weight * language_heatmap
-        + reference_weight * reference.patch_score.reshape_as(language_heatmap)
-    )
+    if score_mode == "language":
+        combined_heatmap = language_heatmap
+    elif score_mode == "reference":
+        combined_heatmap = reference.patch_score.reshape_as(language_heatmap)
+    else:
+        combined_heatmap = language_weight * language_heatmap + reference_weight * reference.patch_score.reshape_as(language_heatmap)
     heatmap = resize_heatmap(combined_heatmap, height, width)
 
     return {
@@ -123,8 +133,12 @@ def score_record(
         "category": category,
         "defect_type": str(record["defect_type"]),
         "label": label,
+        "language_logit": float(language.defect_logit.item()),
+        "reference_score": float(reference.image_score.item()),
         "defect_logit": float(defect_logit.item()),
         "defect_probability": float(probability.item()),
+        "score_mode": score_mode,
+        "calibration_applied": calibration_applied,
         "heatmap": heatmap,
         "ground_truth_mask": gt,
     }
@@ -136,15 +150,44 @@ def evaluate_category(category: str, records: list[dict[str, object]]) -> dict[s
     probabilities = [float(r["defect_probability"]) for r in records]
     heatmaps = np.stack([r["heatmap"] for r in records])
     masks = np.stack([r["ground_truth_mask"] for r in records])
-    return {
+    result = {
         "category": category,
         "images": len(records),
         "good_images": sum(label == 0 for label in labels),
         "defective_images": sum(label == 1 for label in labels),
         "image_auroc": image_auroc(labels, logits),
         "pixel_aupro": pixel_aupro(heatmaps, masks),
-        "expected_calibration_error": expected_calibration_error(probabilities, labels),
+        "expected_calibration_error": (
+            expected_calibration_error(probabilities, labels)
+            if all(bool(record["calibration_applied"]) for record in records)
+            else None
+        ),
     }
+
+    # Preserve all normal images and isolate each defect type so a category
+    # average cannot hide a failure on one particular defect.
+    good = [record for record in records if int(record["label"]) == 0]
+    defect_types = sorted({
+        str(record["defect_type"]) for record in records if int(record["label"]) == 1
+    })
+    per_defect_type = {}
+    for defect_type in defect_types:
+        subset = good + [
+            record for record in records
+            if int(record["label"]) == 1 and str(record["defect_type"]) == defect_type
+        ]
+        subset_labels = [int(record["label"]) for record in subset]
+        subset_logits = [float(record["defect_logit"]) for record in subset]
+        subset_heatmaps = np.stack([record["heatmap"] for record in subset])
+        subset_masks = np.stack([record["ground_truth_mask"] for record in subset])
+        per_defect_type[defect_type] = {
+            "images": len(subset),
+            "defective_images": len(subset) - len(good),
+            "image_auroc": image_auroc(subset_labels, subset_logits),
+            "pixel_aupro": pixel_aupro(subset_heatmaps, subset_masks),
+        }
+    result["defect_types"] = per_defect_type
+    return result
 
 
 def main() -> None:
@@ -164,6 +207,7 @@ def main() -> None:
         data_root=args.data_root,
         manifest_path=args.reference_manifest,
         cache_dir=args.reference_cache,
+        top_fraction=args.reference_top_fraction,
     )
 
     results = []
@@ -175,7 +219,8 @@ def main() -> None:
         scored = []
         for record in [r for r in records if str(r["category"]) == category]:
             scored.append(score_record(
-                record, args.data_root, encoder, prompt_bank, reference_bank, calibration
+                record, args.data_root, encoder, prompt_bank, reference_bank, calibration,
+                score_mode=args.score_mode,
             ))
             processed += 1
             if processed % 50 == 0 or processed == len(records):
@@ -191,7 +236,11 @@ def main() -> None:
         "macro_image_auroc": float(np.mean([r["image_auroc"] for r in results])),
         "macro_pixel_aupro": float(np.mean([r["pixel_aupro"] for r in results])),
         "overall_expected_calibration_error": expected_calibration_error(all_probabilities, all_labels),
-        "macro_expected_calibration_error": float(np.mean([r["expected_calibration_error"] for r in results])),
+        "macro_expected_calibration_error": (
+            float(np.mean([r["expected_calibration_error"] for r in results]))
+            if all(r["expected_calibration_error"] is not None for r in results)
+            else None
+        ),
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -202,6 +251,8 @@ def main() -> None:
         "model_name": MODEL_NAME,
         "pretrained_checkpoint": PRETRAINED_CHECKPOINT,
         "device": str(encoder.device),
+        "score_mode": args.score_mode,
+        "reference_top_fraction": args.reference_top_fraction,
         "temperature": calibration.temperature,
         "language_weight": calibration.language_weight,
         "reference_weight": calibration.reference_weight,
@@ -226,7 +277,10 @@ def main() -> None:
     print(f"Overall image AUROC: {summary['overall_image_auroc']:.4f}")
     print(f"Macro image AUROC: {summary['macro_image_auroc']:.4f}")
     print(f"Macro pixel AU-PRO: {summary['macro_pixel_aupro']:.4f}")
-    print(f"Overall ECE: {summary['overall_expected_calibration_error']:.4f}")
+    if summary["overall_expected_calibration_error"] is not None:
+        print(f"Overall ECE: {summary['overall_expected_calibration_error']:.4f}")
+    else:
+        print("Overall ECE: not reported for non-fused ablation mode")
     print(f"JSON report: {json_path}")
     print(f"CSV report: {csv_path}")
 
