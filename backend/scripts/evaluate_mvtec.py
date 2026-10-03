@@ -101,6 +101,7 @@ def score_record(
         defect_logit = language_weight * language.defect_logit + reference_weight * reference.image_score
     else:
         raise ValueError(f"Unknown score mode: {score_mode}")
+    calibration_applied = score_mode == "fused"
     probability = calibrate_probability(defect_logit, calibration.temperature)
 
     width, height = original.size
@@ -137,6 +138,7 @@ def score_record(
         "defect_logit": float(defect_logit.item()),
         "defect_probability": float(probability.item()),
         "score_mode": score_mode,
+        "calibration_applied": calibration_applied,
         "heatmap": heatmap,
         "ground_truth_mask": gt,
     }
@@ -148,7 +150,7 @@ def evaluate_category(category: str, records: list[dict[str, object]]) -> dict[s
     probabilities = [float(r["defect_probability"]) for r in records]
     heatmaps = np.stack([r["heatmap"] for r in records])
     masks = np.stack([r["ground_truth_mask"] for r in records])
-    return {
+    result = {
         "category": category,
         "images": len(records),
         "good_images": sum(label == 0 for label in labels),
@@ -157,6 +159,31 @@ def evaluate_category(category: str, records: list[dict[str, object]]) -> dict[s
         "pixel_aupro": pixel_aupro(heatmaps, masks),
         "expected_calibration_error": expected_calibration_error(probabilities, labels),
     }
+
+    # Preserve all normal images and isolate each defect type so a category
+    # average cannot hide a failure on one particular defect.
+    good = [record for record in records if int(record["label"]) == 0]
+    defect_types = sorted({
+        str(record["defect_type"]) for record in records if int(record["label"]) == 1
+    })
+    per_defect_type = {}
+    for defect_type in defect_types:
+        subset = good + [
+            record for record in records
+            if int(record["label"]) == 1 and str(record["defect_type"]) == defect_type
+        ]
+        subset_labels = [int(record["label"]) for record in subset]
+        subset_logits = [float(record["defect_logit"]) for record in subset]
+        subset_heatmaps = np.stack([record["heatmap"] for record in subset])
+        subset_masks = np.stack([record["ground_truth_mask"] for record in subset])
+        per_defect_type[defect_type] = {
+            "images": len(subset),
+            "defective_images": len(subset) - len(good),
+            "image_auroc": image_auroc(subset_labels, subset_logits),
+            "pixel_aupro": pixel_aupro(subset_heatmaps, subset_masks),
+        }
+    result["defect_types"] = per_defect_type
+    return result
 
 
 def main() -> None:
