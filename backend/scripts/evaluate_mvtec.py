@@ -102,7 +102,11 @@ def score_record(
     else:
         raise ValueError(f"Unknown score mode: {score_mode}")
     calibration_applied = score_mode == "fused"
-    probability = calibrate_probability(defect_logit, calibration.temperature)
+    probability = (
+        calibrate_probability(defect_logit, calibration.temperature)
+        if calibration_applied
+        else torch.sigmoid(defect_logit)
+    )
 
     width, height = original.size
     if label:
