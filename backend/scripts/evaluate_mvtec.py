@@ -157,7 +157,11 @@ def evaluate_category(category: str, records: list[dict[str, object]]) -> dict[s
         "defective_images": sum(label == 1 for label in labels),
         "image_auroc": image_auroc(labels, logits),
         "pixel_aupro": pixel_aupro(heatmaps, masks),
-        "expected_calibration_error": expected_calibration_error(probabilities, labels),
+        "expected_calibration_error": (
+            expected_calibration_error(probabilities, labels)
+            if all(bool(record["calibration_applied"]) for record in records)
+            else None
+        ),
     }
 
     # Preserve all normal images and isolate each defect type so a category
@@ -232,7 +236,11 @@ def main() -> None:
         "macro_image_auroc": float(np.mean([r["image_auroc"] for r in results])),
         "macro_pixel_aupro": float(np.mean([r["pixel_aupro"] for r in results])),
         "overall_expected_calibration_error": expected_calibration_error(all_probabilities, all_labels),
-        "macro_expected_calibration_error": float(np.mean([r["expected_calibration_error"] for r in results])),
+        "macro_expected_calibration_error": (
+            float(np.mean([r["expected_calibration_error"] for r in results]))
+            if all(r["expected_calibration_error"] is not None for r in results)
+            else None
+        ),
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -269,7 +277,10 @@ def main() -> None:
     print(f"Overall image AUROC: {summary['overall_image_auroc']:.4f}")
     print(f"Macro image AUROC: {summary['macro_image_auroc']:.4f}")
     print(f"Macro pixel AU-PRO: {summary['macro_pixel_aupro']:.4f}")
-    print(f"Overall ECE: {summary['overall_expected_calibration_error']:.4f}")
+    if summary["overall_expected_calibration_error"] is not None:
+        print(f"Overall ECE: {summary['overall_expected_calibration_error']:.4f}")
+    else:
+        print("Overall ECE: not reported for non-fused ablation mode")
     print(f"JSON report: {json_path}")
     print(f"CSV report: {csv_path}")
 
