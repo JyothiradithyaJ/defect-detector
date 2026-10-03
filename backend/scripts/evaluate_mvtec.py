@@ -123,6 +123,8 @@ def score_record(
         "category": category,
         "defect_type": str(record["defect_type"]),
         "label": label,
+        "language_logit": float(language.defect_logit.item()),
+        "reference_score": float(reference.image_score.item()),
         "defect_logit": float(defect_logit.item()),
         "defect_probability": float(probability.item()),
         "heatmap": heatmap,
