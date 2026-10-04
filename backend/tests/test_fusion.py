@@ -26,7 +26,12 @@ def _make_embeddings():
     anomalous[1] = 1.0
     global_embedding = normal.unsqueeze(0)
     patches = normal.repeat(PATCH_COUNT, 1)
-    patches[10] = anomalous
+
+    # Top-10% averaging needs every selected patch to be hot to produce a
+    # clean local score of 1.0; this is not a max-pooling test.
+    top_count = max(1, int(PATCH_COUNT * 0.10))
+    patches[:top_count] = anomalous
+
     return (
         ImageEmbeddings(
             global_embedding=global_embedding,
