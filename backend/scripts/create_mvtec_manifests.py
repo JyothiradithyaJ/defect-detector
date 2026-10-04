@@ -174,7 +174,7 @@ def test_records_for_stratum(
 
 
 def build_train_reference_manifest(data_root: Path) -> list[dict[str, object]]:
-    """Use official MVTec train/good images as the normal reference set."""
+    """Legacy helper retained for historical reference-memory experiments."""
     records: list[dict[str, object]] = []
 
     for category in MVTEC_CATEGORIES:
