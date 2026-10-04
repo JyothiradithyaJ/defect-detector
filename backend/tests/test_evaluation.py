@@ -109,7 +109,7 @@ def test_tensor_heatmap_to_numpy_rejects_invalid_shape() -> None:
             1.0,
         ),
         (
-            np.zeros((1, 2, 2), dtype=np.float32),
+            np.array([[[0.0, 1.0], [1.0, 1.0]]], dtype=np.float32),
             np.array([[[1, 0], [0, 0]]], dtype=bool),
             0.0,
         ),
