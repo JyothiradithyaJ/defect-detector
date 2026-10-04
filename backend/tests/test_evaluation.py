@@ -100,3 +100,28 @@ def test_tensor_heatmap_to_numpy_rejects_invalid_shape() -> None:
     """A batch containing multiple heatmaps is not accepted."""
     with pytest.raises(ValueError, match="heatmap must have shape"):
         tensor_heatmap_to_numpy(torch.zeros(2, 7, 7))
+
+
+@pytest.mark.parametrize(
+    ("scores", "mask", "expected"),
+    [
+        (
+            np.array([[[1.0, 0.0], [0.0, 0.0]]], dtype=np.float32),
+            np.array([[[1, 0], [0, 0]]], dtype=bool),
+            1.0,
+        ),
+        (
+            np.zeros((1, 2, 2), dtype=np.float32),
+            np.array([[[1, 0], [0, 0]]], dtype=bool),
+            0.0,
+        ),
+        (
+            np.array([[[1.0, 0.5], [0.0, 0.0]]], dtype=np.float32),
+            np.array([[[1, 1], [0, 0]]], dtype=bool),
+            1.0,
+        ),
+    ],
+)
+def test_pixel_aupro_protocol_cases(scores, mask, expected):
+    """Perfect, zero, and fully covered partial-region maps are exact."""
+    assert pixel_aupro(scores, mask) == pytest.approx(expected)
