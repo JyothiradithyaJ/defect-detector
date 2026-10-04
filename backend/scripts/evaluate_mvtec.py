@@ -26,7 +26,9 @@ from app.core.evaluation import (
     pixel_aupro,
     tensor_heatmap_to_numpy,
 )
+from app.core.detection import assemble_detection_result
 from app.core.fusion import fuse_scores
+from app.core.mc_dropout import DropoutScoringHead
 from app.core.prompts import PromptBank
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -75,6 +77,7 @@ def score_record(
     encoder: CLIPEncoder,
     prompt_bank: PromptBank,
     calibration,
+    scoring_head: DropoutScoringHead,
 ) -> dict[str, object]:
     category = str(record["category"])
     label = int(record["label"])
@@ -89,7 +92,13 @@ def score_record(
     prompts = prompt_bank.get(category)
     language = fuse_scores(embeddings, prompts)
     defect_logit = language.defect_logit
-    probability = calibrate_probability(defect_logit, calibration.temperature)
+    detection = assemble_detection_result(
+        language,
+        calibration.temperature,
+        scoring_head,
+        embeddings.global_embedding,
+    )
+    probability = detection.defect_probability
 
     width, height = original.size
     if label:
@@ -116,6 +125,9 @@ def score_record(
         "label": label,
         "defect_logit": float(defect_logit.item()),
         "defect_probability": float(probability.item()),
+        "mc_mean_probability": float(detection.mc_mean_probability.item()),
+        "mc_variance": float(detection.mc_variance.item()),
+        "mc_predictive_entropy": float(detection.mc_predictive_entropy.item()),
         "heatmap": heatmap,
         "ground_truth_mask": gt,
     }
@@ -128,6 +140,8 @@ def evaluate_category(
     labels = [int(r["label"]) for r in records]
     logits = [float(r["defect_logit"]) for r in records]
     probabilities = [float(r["defect_probability"]) for r in records]
+    mc_variances = [float(r["mc_variance"]) for r in records]
+    mc_entropies = [float(r["mc_predictive_entropy"]) for r in records]
     heatmaps = np.stack([r["heatmap"] for r in records])
     masks = np.stack([r["ground_truth_mask"] for r in records])
 
@@ -142,6 +156,8 @@ def evaluate_category(
             probabilities,
             labels,
         ),
+        "mean_mc_variance": float(np.mean(mc_variances)),
+        "mean_mc_predictive_entropy": float(np.mean(mc_entropies)),
     }
 
     good = [record for record in records if int(record["label"]) == 0]
@@ -186,6 +202,7 @@ def main() -> None:
     calibration = load_calibration(args.temperature_file)
     encoder = CLIPEncoder(device=args.device)
     prompt_bank = PromptBank(encoder)
+    scoring_head = DropoutScoringHead(embedding_dim=512, dropout_probability=0.2)
 
     results = []
     all_labels, all_logits, all_probabilities = [], [], []
@@ -202,6 +219,7 @@ def main() -> None:
                     encoder,
                     prompt_bank,
                     calibration,
+                    scoring_head,
                 )
             )
             processed += 1
@@ -230,6 +248,12 @@ def main() -> None:
                 [r["expected_calibration_error"] for r in results]
             )
         ),
+        "macro_mc_variance": float(
+            np.mean([r["mean_mc_variance"] for r in results])
+        ),
+        "macro_mc_predictive_entropy": float(
+            np.mean([r["mean_mc_predictive_entropy"] for r in results])
+        ),
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -246,6 +270,7 @@ def main() -> None:
         "prompt_cache_key": prompt_bank.cache_key,
         "heatmap_method": "multi-layer CLIP language map",
         "pixel_aupro_protocol": "validated MVTec-compatible AUPRO with max FPR 0.30",
+        "uncertainty_method": "10-pass MC Dropout scoring head; metadata only, primary probability remains temperature-calibrated language score",
         "summary": summary,
         "categories": results,
     }
@@ -265,6 +290,8 @@ def main() -> None:
                 "image_auroc",
                 "pixel_aupro",
                 "expected_calibration_error",
+                "mean_mc_variance",
+                "mean_mc_predictive_entropy",
             ],
         )
         writer.writeheader()
