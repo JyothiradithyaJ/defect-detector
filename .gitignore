@@ -8,3 +8,5 @@ artifacts/evaluations/
 .env
 .pytest_cache/
 backend/.pytest-tmp/
+# Generated heatmap overlays (keep only curated examples tracked)
+backend/artifacts/*.png
