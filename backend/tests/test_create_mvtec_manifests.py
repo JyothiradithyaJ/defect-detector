@@ -51,10 +51,10 @@ def mini_mvtec_root(
     return data_root
 
 
-def test_train_reference_contains_only_normal_training_images(
+def test_manifest_generation_separates_train_reference_split(
     mini_mvtec_root: Path,
 ) -> None:
-    """Official train/good images become normal reference records."""
+    """Train-reference metadata contains only normal training records."""
     records = manifests.build_train_reference_manifest(mini_mvtec_root)
 
     assert len(records) == 2
