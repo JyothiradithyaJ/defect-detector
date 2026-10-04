@@ -65,7 +65,10 @@ def test_calibration_manifest_requires_both_labels(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="both good"):
+    with pytest.raises(
+        ValueError,
+        match=r"Calibration manifest must contain both labels 0 and 1\.",
+    ):
         load_records(manifest_path)
 
 
