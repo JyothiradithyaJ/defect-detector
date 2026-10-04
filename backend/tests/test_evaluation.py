@@ -61,7 +61,6 @@ def test_pixel_aupro_is_high_for_a_perfect_heatmap() -> None:
         score_maps=score_maps,
         masks=masks,
         max_false_positive_rate=0.30,
-        thresholds=20,
     )
 
     assert score > 0.95
@@ -80,7 +79,6 @@ def test_pixel_aupro_handles_regions_from_multiple_images() -> None:
     score = pixel_aupro(
         score_maps=score_maps,
         masks=masks,
-        thresholds=20,
     )
 
     assert score > 0.95
