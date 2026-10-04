@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as functional
 from PIL import Image
 
-from app.core.calibration import calibrate_probability, load_calibration
+from app.core.calibration import load_calibration
 from app.core.clip_encoder import MODEL_NAME, PRETRAINED_CHECKPOINT, CLIPEncoder
 from app.core.evaluation import (
     expected_calibration_error,
