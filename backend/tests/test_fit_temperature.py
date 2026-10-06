@@ -32,9 +32,10 @@ def test_temperature_fitting_reduces_calibration_nll() -> None:
         labels,
     ).item()
 
-    temperature, calibrated_nll = fit_temperature(defect_logits, labels)
+    temperature, bias, calibrated_nll = fit_temperature(defect_logits, labels)
 
     assert temperature > 0.0
+    assert torch.isfinite(torch.tensor(bias))
     assert calibrated_nll < uncalibrated_nll
 
 
@@ -43,10 +44,25 @@ def test_temperature_fitting_returns_finite_values() -> None:
     defect_logits = torch.tensor([-2.0, -0.5, 0.5, 2.0])
     labels = torch.tensor([0.0, 1.0, 0.0, 1.0])
 
-    temperature, nll = fit_temperature(defect_logits, labels)
+    temperature, bias, nll = fit_temperature(defect_logits, labels)
 
     assert torch.isfinite(torch.tensor(temperature))
+    assert torch.isfinite(torch.tensor(bias))
     assert torch.isfinite(torch.tensor(nll))
+
+
+def test_intercept_prevents_temperature_from_collapsing_for_shifted_logits() -> None:
+    """A non-zero class prevalence needs an intercept, not a capped temperature."""
+    defect_logits = torch.tensor([-0.014, -0.012, -0.010, -0.008, -0.006])
+    labels = torch.tensor([0.0, 1.0, 1.0, 1.0, 1.0])
+
+    temperature, bias, nll = fit_temperature(defect_logits, labels)
+    probabilities = torch.sigmoid(defect_logits / temperature + bias)
+
+    assert temperature > 0.0
+    assert bias > 0.0
+    assert nll < 0.7
+    assert probabilities.mean() > 0.5
 
 
 def test_calibration_manifest_requires_both_labels(tmp_path: Path) -> None:

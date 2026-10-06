@@ -10,10 +10,11 @@ Phase 1 is intentionally a **pure zero-shot CLIP detector**. It combines:
 - A compositional normal/anomalous prompt ensemble.
 - Three final visual-transformer intermediate feature maps for local scoring.
 - Robust top-10% local aggregation instead of a single maximum patch.
-- Fixed tuned language-fusion weights: **GLOBAL_WEIGHT=0.35** and **LOCAL_WEIGHT=0.65**.
-- Single-scalar temperature scaling fitted only on the held-out calibration split.
+- Fixed calibration-selected language-fusion weights: **GLOBAL_WEIGHT=0.95** and **LOCAL_WEIGHT=0.05**.
+- Temperature-and-intercept calibration fitted only on the held-out calibration split.
 - MC Dropout uncertainty metadata from the existing lightweight scoring head.
-- 7x7 CLIP anomaly heatmaps for localization.
+- 7x7 multi-layer CLIP anomaly heatmaps with horizontal-flip test-time
+  augmentation for localization.
 - MVTec-compatible AU-PRO, image AUROC, and ECE reporting.
 
 The category-specific normal-reference memory used in earlier experiments is **not part of Phase 1**. Its implementation is retained under `backend/experimental/` only as a decision trace; its large tensor cache was removed.
@@ -66,7 +67,7 @@ The active Phase 1 manifest generator does not create a normal-reference cache.
 
 ## Fit calibration
 
-Fit the single temperature against the language-only anomaly score:
+Fit the positive temperature and intercept against the language-only anomaly score:
 
 ```bash
 python backend/scripts/fit_temperature.py --device cpu

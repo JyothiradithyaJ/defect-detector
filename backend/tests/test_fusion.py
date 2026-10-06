@@ -15,7 +15,12 @@ from app.core.clip_encoder import (  # noqa: E402
     PATCH_GRID_SIZE,
     ImageEmbeddings,
 )
-from app.core.fusion import GLOBAL_WEIGHT, LOCAL_WEIGHT, fuse_scores  # noqa: E402
+from app.core.fusion import (  # noqa: E402
+    GLOBAL_WEIGHT,
+    LOCAL_WEIGHT,
+    average_flip_heatmaps,
+    fuse_scores,
+)
 from app.core.prompts import PromptEmbeddings  # noqa: E402
 
 
@@ -90,3 +95,13 @@ def test_fusion_rejects_invalid_patch_shape():
     )
     with pytest.raises(ValueError, match="Patch embeddings must have shape"):
         fuse_scores(invalid, prompts)
+
+
+def test_flip_heatmap_average_returns_original_coordinate_frame():
+    """The flipped map is unflipped before ensembling."""
+    original = torch.tensor([[[1.0, 2.0, 3.0]]])
+    flipped = torch.tensor([[[3.0, 2.0, 1.0]]])
+
+    heatmap = average_flip_heatmaps(original, flipped)
+
+    assert torch.equal(heatmap, original)

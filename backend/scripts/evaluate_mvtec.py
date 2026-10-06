@@ -26,7 +26,12 @@ from app.core.evaluation import (
     pixel_aupro,
     tensor_heatmap_to_numpy,
 )
-from app.core.fusion import fuse_scores
+from app.core.fusion import (
+    GLOBAL_WEIGHT,
+    LOCAL_WEIGHT,
+    average_flip_heatmaps,
+    fuse_scores,
+)
 from app.core.prompts import PromptBank
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -84,12 +89,21 @@ def score_record(
 
     with Image.open(image_path) as image:
         original = image.convert("RGB")
-        embeddings = encoder.encode_image(encoder.prepare_image(original))
+        image_batch = encoder.prepare_image(original)
+        embeddings = encoder.encode_image(image_batch)
+        flipped_embeddings = encoder.encode_image(
+            torch.flip(image_batch, dims=(-1,))
+        )
 
     prompts = prompt_bank.get(category)
     language = fuse_scores(embeddings, prompts)
+    flipped_language = fuse_scores(flipped_embeddings, prompts)
     defect_logit = language.defect_logit
-    probability = calibrate_probability(defect_logit, calibration.temperature)
+    probability = calibrate_probability(
+        defect_logit,
+        calibration.temperature,
+        calibration.bias,
+    )
 
     width, height = original.size
     if label:
@@ -107,7 +121,11 @@ def score_record(
     else:
         gt = np.zeros((height, width), dtype=bool)
 
-    heatmap = resize_heatmap(language.heatmap, height, width)
+    heatmap = resize_heatmap(
+        average_flip_heatmaps(language.heatmap, flipped_language.heatmap),
+        height,
+        width,
+    )
 
     return {
         "image_id": str(record["image_id"]),
@@ -240,11 +258,12 @@ def main() -> None:
         "pretrained_checkpoint": PRETRAINED_CHECKPOINT,
         "device": str(encoder.device),
         "score_mode": "language",
-        "global_weight": 0.35,
-        "local_weight": 0.65,
+        "global_weight": GLOBAL_WEIGHT,
+        "local_weight": LOCAL_WEIGHT,
         "temperature": calibration.temperature,
+        "calibration_bias": calibration.bias,
         "prompt_cache_key": prompt_bank.cache_key,
-        "heatmap_method": "multi-layer CLIP language map",
+        "heatmap_method": "multi-layer CLIP language map with flip test-time augmentation",
         "pixel_aupro_protocol": "validated MVTec-compatible AUPRO with max FPR 0.30",
         "summary": summary,
         "categories": results,
@@ -255,20 +274,26 @@ def main() -> None:
     json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     with csv_path.open("w", newline="", encoding="utf-8") as file:
+        fieldnames = [
+            "category",
+            "images",
+            "good_images",
+            "defective_images",
+            "image_auroc",
+            "pixel_aupro",
+            "expected_calibration_error",
+        ]
         writer = csv.DictWriter(
             file,
-            fieldnames=[
-                "category",
-                "images",
-                "good_images",
-                "defective_images",
-                "image_auroc",
-                "pixel_aupro",
-                "expected_calibration_error",
-            ],
+            fieldnames=fieldnames,
         )
         writer.writeheader()
-        writer.writerows(results)
+        # ``defect_types`` is nested data preserved in results.json; the CSV
+        # report deliberately contains only its declared flat category fields.
+        writer.writerows(
+            {field: result[field] for field in fieldnames}
+            for result in results
+        )
 
     print("\nEvaluation complete")
     print(f"Overall image AUROC: {summary['overall_image_auroc']:.4f}")

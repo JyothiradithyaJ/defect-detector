@@ -16,6 +16,7 @@ DEFAULT_CALIBRATION_PATH = BACKEND_DIR / "config" / "calibration.json"
 @dataclass(frozen=True)
 class CalibrationConfig:
     temperature: float
+    bias: float = 0.0
     model_name: str = ""
     pretrained_checkpoint: str = ""
     calibration_manifest_hash: str = ""
@@ -26,6 +27,8 @@ class CalibrationConfig:
     def validate(self) -> None:
         if not isfinite(self.temperature) or self.temperature <= 0:
             raise ValueError("Temperature must be finite and > 0.")
+        if not isfinite(self.bias):
+            raise ValueError("Calibration bias must be finite.")
 
 
 def load_calibration(path: Path = DEFAULT_CALIBRATION_PATH) -> CalibrationConfig:
@@ -52,7 +55,10 @@ def save_calibration(
 def calibrate_probability(
     defect_logit: torch.Tensor,
     temperature: float,
+    bias: float = 0.0,
 ) -> torch.Tensor:
     if not isfinite(temperature) or temperature <= 0:
         raise ValueError("Temperature must be finite and > 0.")
-    return torch.sigmoid(defect_logit / temperature)
+    if not isfinite(bias):
+        raise ValueError("Calibration bias must be finite.")
+    return torch.sigmoid(defect_logit / temperature + bias)

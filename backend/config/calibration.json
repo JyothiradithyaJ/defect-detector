@@ -1,0 +1,10 @@
+{
+  "bias": 0.905678038077271,
+  "calibration_manifest_hash": "074da6ecdf82f1e59fbdcdefb9fe04e6836e6b622814de0ec94d693a129b2ca9",
+  "calibration_nll": 0.5677640440173038,
+  "fitted_at": "2026-10-06T13:44:15.838263+00:00",
+  "model_name": "ViT-B-32-quickgelu",
+  "pretrained_checkpoint": "openai",
+  "prompt_cache_key": "b5e6f1902da33bb2589319704267754aaa3ca86fdf111d0f2898fd8e5d93f3bd",
+  "temperature": 0.016078264866179207
+}

@@ -2,10 +2,11 @@
 
 The Phase 1 detector is intentionally reference-free. Global and local CLIP
 evidence are combined with deliberately tuned weights:
-    GLOBAL_WEIGHT=0.35
-    LOCAL_WEIGHT=0.65
-The higher local weight emphasizes small, spatially localized industrial
-defects while retaining global semantic context.
+    GLOBAL_WEIGHT=0.95
+    LOCAL_WEIGHT=0.05
+Held-out calibration scoring showed that the global prompt contrast carries
+the useful image-level ranking signal; the local term remains as a small,
+robust complement and continues to provide the localization map.
 """
 
 from __future__ import annotations
@@ -23,9 +24,21 @@ from app.core.clip_encoder import (
 )
 from app.core.prompts import PromptEmbeddings
 
-GLOBAL_WEIGHT = 0.35
-LOCAL_WEIGHT = 0.65
+GLOBAL_WEIGHT = 0.95
+LOCAL_WEIGHT = 0.05
 LOCAL_TOP_FRACTION = 0.10
+
+
+def average_flip_heatmaps(
+    original_heatmap: torch.Tensor,
+    flipped_heatmap: torch.Tensor,
+) -> torch.Tensor:
+    """Average original and horizontally flipped heatmaps in one coordinate frame."""
+    if original_heatmap.shape != flipped_heatmap.shape:
+        raise ValueError("Flip heatmaps must have identical shapes.")
+    if original_heatmap.ndim != 3:
+        raise ValueError("Flip heatmaps must have shape [batch, height, width].")
+    return 0.5 * (original_heatmap + torch.flip(flipped_heatmap, dims=(-1,)))
 
 
 @dataclass(frozen=True)
@@ -87,9 +100,9 @@ def fuse_scores(
 ) -> FusionResult:
     """Fuse pure zero-shot CLIP evidence into one anomaly logit.
 
-    GLOBAL_WEIGHT=0.35 and LOCAL_WEIGHT=0.65 are deliberate tuned choices.
-    The local term receives more weight because industrial defects are often
-    small and spatially localized; the global term preserves semantic context.
+    GLOBAL_WEIGHT=0.95 and LOCAL_WEIGHT=0.05 are selected on the held-out
+    calibration split. The global prompt contrast drives image-level ranking;
+    the local term remains for a robust complementary signal and localization.
     No category-specific reference memory is used in Phase 1.
     """
     _validate_embeddings(image_embeddings, prompt_embeddings)
