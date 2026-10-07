@@ -23,6 +23,7 @@ from app.core.clip_encoder import MODEL_NAME, PRETRAINED_CHECKPOINT, CLIPEncoder
 from app.core.evaluation import (
     expected_calibration_error,
     image_auroc,
+    pixel_auroc,
     pixel_aupro,
     tensor_heatmap_to_numpy,
 )
@@ -51,6 +52,26 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--categories", nargs="*", default=None)
+    parser.add_argument(
+        "--metric-max-side",
+        type=int,
+        default=256,
+        help=(
+            "Maximum height or width of heatmaps and masks used for pixel "
+            "metrics (default: 256). Use 0 for native resolution, which can "
+            "require multiple gigabytes for a category."
+        ),
+    )
+    parser.add_argument(
+        "--heatmap-polarity",
+        choices=("native", "inverted"),
+        default="inverted",
+        help=(
+            "Use the CLIP anomaly heatmap as-is or negate it. The default "
+            "inverted polarity was selected on the calibration split; retain "
+            "it for held-out evaluation."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -73,6 +94,16 @@ def resize_heatmap(heatmap: torch.Tensor, height: int, width: int) -> np.ndarray
     return tensor_heatmap_to_numpy(resized.squeeze(1))
 
 
+def metric_size(width: int, height: int, max_side: int) -> tuple[int, int]:
+    """Bound metric-map resolution without changing aspect ratio."""
+    if max_side < 0:
+        raise ValueError("metric_max_side must be zero or positive.")
+    if max_side == 0 or max(width, height) <= max_side:
+        return width, height
+    scale = max_side / max(width, height)
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
 @torch.inference_mode()
 def score_record(
     record: dict[str, object],
@@ -80,6 +111,8 @@ def score_record(
     encoder: CLIPEncoder,
     prompt_bank: PromptBank,
     calibration,
+    heatmap_polarity: str,
+    metric_max_side: int,
 ) -> dict[str, object]:
     category = str(record["category"])
     label = int(record["label"])
@@ -106,6 +139,9 @@ def score_record(
     )
 
     width, height = original.size
+    metric_width, metric_height = metric_size(
+        width, height, metric_max_side
+    )
     if label:
         mask_path = data_root / str(record["mask_path"])
         if not mask_path.is_file():
@@ -113,19 +149,21 @@ def score_record(
         with Image.open(mask_path) as mask:
             gt = np.asarray(
                 mask.convert("L").resize(
-                    (width, height),
+                    (metric_width, metric_height),
                     Image.Resampling.NEAREST,
                 ),
                 dtype=np.uint8,
             ) > 0
     else:
-        gt = np.zeros((height, width), dtype=bool)
+        gt = np.zeros((metric_height, metric_width), dtype=bool)
 
     heatmap = resize_heatmap(
         average_flip_heatmaps(language.heatmap, flipped_language.heatmap),
-        height,
-        width,
+        metric_height,
+        metric_width,
     )
+    if heatmap_polarity == "inverted":
+        heatmap = -heatmap
 
     return {
         "image_id": str(record["image_id"]),
@@ -156,6 +194,7 @@ def evaluate_category(
         "defective_images": sum(label == 1 for label in labels),
         "image_auroc": image_auroc(labels, logits),
         "pixel_aupro": pixel_aupro(heatmaps, masks),
+        "pixel_auroc": pixel_auroc(heatmaps, masks),
         "expected_calibration_error": expected_calibration_error(
             probabilities,
             labels,
@@ -187,6 +226,7 @@ def evaluate_category(
             "defective_images": len(subset) - len(good),
             "image_auroc": image_auroc(subset_labels, subset_logits),
             "pixel_aupro": pixel_aupro(subset_heatmaps, subset_masks),
+            "pixel_auroc": pixel_auroc(subset_heatmaps, subset_masks),
         }
     result["defect_types"] = per_defect_type
     return result
@@ -220,6 +260,8 @@ def main() -> None:
                     encoder,
                     prompt_bank,
                     calibration,
+                    args.heatmap_polarity,
+                    args.metric_max_side,
                 )
             )
             processed += 1
@@ -238,6 +280,9 @@ def main() -> None:
         ),
         "macro_pixel_aupro": float(
             np.mean([r["pixel_aupro"] for r in results])
+        ),
+        "macro_pixel_auroc": float(
+            np.mean([r["pixel_auroc"] for r in results])
         ),
         "overall_expected_calibration_error": expected_calibration_error(
             all_probabilities,
@@ -264,6 +309,12 @@ def main() -> None:
         "calibration_bias": calibration.bias,
         "prompt_cache_key": prompt_bank.cache_key,
         "heatmap_method": "multi-layer CLIP language map with flip test-time augmentation",
+        "heatmap_polarity": args.heatmap_polarity,
+        "metric_max_side": args.metric_max_side,
+        "pixel_metric_resolution": (
+            "native" if args.metric_max_side == 0
+            else f"maximum side {args.metric_max_side} pixels"
+        ),
         "pixel_aupro_protocol": "validated MVTec-compatible AUPRO with max FPR 0.30",
         "summary": summary,
         "categories": results,
@@ -281,6 +332,7 @@ def main() -> None:
             "defective_images",
             "image_auroc",
             "pixel_aupro",
+            "pixel_auroc",
             "expected_calibration_error",
         ]
         writer = csv.DictWriter(
@@ -299,6 +351,7 @@ def main() -> None:
     print(f"Overall image AUROC: {summary['overall_image_auroc']:.4f}")
     print(f"Macro image AUROC: {summary['macro_image_auroc']:.4f}")
     print(f"Macro pixel AU-PRO: {summary['macro_pixel_aupro']:.4f}")
+    print(f"Macro pixel AUROC: {summary['macro_pixel_auroc']:.4f}")
     print(
         "Overall ECE: "
         f"{summary['overall_expected_calibration_error']:.4f}"

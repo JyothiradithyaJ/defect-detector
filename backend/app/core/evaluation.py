@@ -26,6 +26,22 @@ def image_auroc(
     return float(roc_auc_score(labels_array, scores_array))
 
 
+def pixel_auroc(
+    score_maps: list[np.ndarray] | np.ndarray,
+    masks: list[np.ndarray] | np.ndarray,
+) -> float:
+    """Calculate pixel-level AUROC from anomaly maps and binary masks."""
+    scores = np.asarray(score_maps, dtype=np.float64)
+    ground_truth = np.asarray(masks, dtype=bool)
+    if scores.shape != ground_truth.shape:
+        raise ValueError("score_maps and masks must have identical shapes.")
+    if scores.ndim != 3:
+        raise ValueError(
+            "score_maps and masks must have shape [images, height, width]."
+        )
+    return image_auroc(ground_truth.reshape(-1), scores.reshape(-1))
+
+
 def expected_calibration_error(
     probabilities: list[float] | np.ndarray,
     labels: list[int] | np.ndarray,

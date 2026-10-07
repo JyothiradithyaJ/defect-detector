@@ -12,10 +12,10 @@ Phase 1 is intentionally a **pure zero-shot CLIP detector**. It combines:
 - Robust top-10% local aggregation instead of a single maximum patch.
 - Fixed calibration-selected language-fusion weights: **GLOBAL_WEIGHT=0.95** and **LOCAL_WEIGHT=0.05**.
 - Temperature-and-intercept calibration fitted only on the held-out calibration split.
-- MC Dropout uncertainty metadata from the existing lightweight scoring head.
 - 7x7 multi-layer CLIP anomaly heatmaps with horizontal-flip test-time
-  augmentation for localization.
-- MVTec-compatible AU-PRO, image AUROC, and ECE reporting.
+  augmentation for localization. The anomaly orientation is
+  `normal similarity - anomalous similarity`, selected on the calibration split.
+- MVTec-compatible AU-PRO, pixel AUROC, image AUROC, and ECE reporting.
 
 The category-specific normal-reference memory used in earlier experiments is **not part of Phase 1**. Its implementation is retained under `backend/experimental/` only as a decision trace; its large tensor cache was removed.
 
@@ -23,18 +23,17 @@ The category-specific normal-reference memory used in earlier experiments is **n
 
 > The system asks CLIP whether an image looks semantically defective, both globally and in local patches, and calibrates that score into a probability.
 
-## Detection output
+## Active output
 
-The typed `DetectionResult` contains:
+The evaluator records `defect_logit`, the primary calibrated
+`defect_probability`, and a heatmap. The calibrated probability is:
 
-- `defect_logit`: raw zero-shot language anomaly score.
-- `defect_probability`: primary temperature-calibrated probability.
-- `mc_mean_probability`: mean probability across MC Dropout passes.
-- `mc_variance`: variance across MC Dropout passes.
-- `mc_predictive_entropy`: predictive Bernoulli entropy, bounded by ln(2).
-- `heatmap`: 7x7 anomaly map before visualization resizing.
+```text
+sigmoid(defect_logit / temperature + bias)
+```
 
-MC Dropout is additional uncertainty metadata; it does **not** replace the calibrated primary probability.
+The current Phase 1 evaluation does not use the repository's experimental MC
+Dropout scoring head.
 
 ## Requirements
 
@@ -102,11 +101,33 @@ For a quick category-specific run:
 python backend/scripts/evaluate_mvtec.py --device cpu --categories bottle cable zipper
 ```
 
-Evaluation reports image AUROC, macro image AUROC, AU-PRO at FPR=0.30, ECE, and mean MC Dropout variance/entropy.
+Evaluation reports image AUROC, pixel AUROC, AU-PRO at FPR=0.30, and ECE.
+Pixel metrics use heatmaps and masks downsampled to a maximum side of 256 by
+default, which avoids multi-gigabyte allocations when evaluating a category.
+Use `--metric-max-side 0` only when enough RAM is available for native-resolution
+metrics.
+
+### Heatmap polarity diagnostic
+
+Heatmap polarity was selected on the held-out calibration split before the
+evaluation split was touched: `inverted` (normal-prompt similarity minus
+anomalous-prompt similarity) won with macro AU-PRO `0.4468` and macro pixel
+AUROC `0.6884`, versus `0.0847` and `0.3116` for the native orientation. It is
+therefore the default for evaluation. To reproduce the selection procedure on a
+fresh calibration split, run native and inverted maps into separate directories:
+
+```bash
+python backend/scripts/evaluate_mvtec.py --device cpu --split-manifest data/manifests/calibration.json --categories bottle --heatmap-polarity native --output-dir artifacts/calibration-native
+python backend/scripts/evaluate_mvtec.py --device cpu --split-manifest data/manifests/calibration.json --categories bottle --heatmap-polarity inverted --output-dir artifacts/calibration-inverted
+```
+
+Use the selected polarity unchanged on the evaluation split. The standard full
+evaluation defaults to `--heatmap-polarity inverted` and downsampled metric maps
+(`--metric-max-side 256`) so it can complete within typical workstation memory.
 
 ## Localization metric
 
-Phase 1 uses the released MVTec-style PRO protocol: connected ground-truth regions are weighted equally, normal pixels determine FPR, and the PRO curve is integrated only up to FPR=0.30. The implementation uses exact score thresholds rather than the previous 200-threshold approximation.
+Phase 1 uses the released MVTec-style PRO protocol: connected ground-truth regions are weighted equally, normal pixels determine FPR, and the PRO curve is integrated only up to FPR=0.30. The implementation uses exact score thresholds rather than the previous 200-threshold approximation, at the configured metric-map resolution.
 
 The MVTec project page provides the reference evaluation code used for consistent benchmark evaluation. For publication claims, cross-check final maps/numbers against that released evaluator.
 
@@ -130,7 +151,6 @@ backend/
     clip_encoder.py       # frozen CLIP + multi-layer patch features
     prompts.py            # compositional prompt ensemble
     fusion.py             # pure zero-shot language fusion
-    detection.py          # typed calibrated + MC uncertainty result
     calibration.py        # temperature calibration
     mc_dropout.py         # uncertainty estimation
     evaluation.py         # AUROC, ECE, validated AU-PRO
