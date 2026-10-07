@@ -174,7 +174,7 @@ def test_records_for_stratum(
 
 
 def build_train_reference_manifest(data_root: Path) -> list[dict[str, object]]:
-    """Use official MVTec train/good images as the normal reference set."""
+    """Legacy helper retained for historical reference-memory experiments."""
     records: list[dict[str, object]] = []
 
     for category in MVTEC_CATEGORIES:
@@ -324,8 +324,6 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    train_reference_records = build_train_reference_manifest(args.data_root)
-
     calibration_records, evaluation_records = build_test_manifests(
         data_root=args.data_root,
         calibration_fraction=args.calibration_fraction,
@@ -334,12 +332,10 @@ def main() -> None:
 
     assert_no_overlap(calibration_records, evaluation_records)
 
-    train_reference_path = args.output_dir / "train_reference.json"
     calibration_path = args.output_dir / "calibration.json"
     evaluation_path = args.output_dir / "evaluation.json"
     metadata_path = args.output_dir / "split_metadata.json"
 
-    write_json(train_reference_path, train_reference_records, args.overwrite)
     write_json(calibration_path, calibration_records, args.overwrite)
     write_json(evaluation_path, evaluation_records, args.overwrite)
 
@@ -350,15 +346,10 @@ def main() -> None:
         "seed": args.seed,
         "calibration_fraction": args.calibration_fraction,
         "split_policy": (
-            "Official train/good images are reference data. Official test "
+            "Official test "
             "images are split independently within each category and defect "
             "type using a deterministic SHA-256 ordering."
         ),
-        "train_reference": {
-            "path": train_reference_path.name,
-            "sha256": manifest_digest(train_reference_records),
-            "counts": count_by_label(train_reference_records),
-        },
         "calibration": {
             "path": calibration_path.name,
             "sha256": manifest_digest(calibration_records),
@@ -373,7 +364,6 @@ def main() -> None:
 
     write_json(metadata_path, metadata, args.overwrite)
 
-    print(f"Train reference: {len(train_reference_records)} images")
     print(f"Calibration: {len(calibration_records)} images")
     print(f"Evaluation: {len(evaluation_records)} images")
     print(f"Manifests written to: {args.output_dir}")

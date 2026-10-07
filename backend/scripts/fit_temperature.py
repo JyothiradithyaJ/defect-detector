@@ -1,4 +1,4 @@
-"""Fit language/reference fusion and temperature on the calibration split."""
+"""Fit one temperature for the pure zero-shot CLIP anomaly score."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+from typing import TYPE_CHECKING
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
@@ -15,29 +16,38 @@ if str(BACKEND_DIR) not in sys.path:
 
 import torch
 import torch.nn.functional as functional
+import numpy as np
 from PIL import Image
 
 from app.core.calibration import CalibrationConfig, save_calibration
-from app.core.clip_encoder import MODEL_NAME, PRETRAINED_CHECKPOINT, CLIPEncoder
-from app.core.fusion import fuse_scores
-from app.core.prompts import PromptBank
-from app.core.reference_bank import NormalReferenceBank
+
+if TYPE_CHECKING:
+    from app.core.clip_encoder import CLIPEncoder
+    from app.core.prompts import PromptBank
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = PROJECT_ROOT / "data" / "mvtec_ad"
 DEFAULT_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "calibration.json"
-DEFAULT_REFERENCE_MANIFEST = PROJECT_ROOT / "data" / "manifests" / "train_reference.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / "backend" / "config" / "calibration.json"
-DEFAULT_REFERENCE_CACHE = PROJECT_ROOT / "data" / "reference_cache"
+DEFAULT_DIAGNOSTIC_DIR = PROJECT_ROOT
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fit anomaly score calibration.")
+    parser = argparse.ArgumentParser(
+        description="Fit temperature scaling for the language-only anomaly score."
+    )
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument("--reference-manifest", type=Path, default=DEFAULT_REFERENCE_MANIFEST)
-    parser.add_argument("--reference-cache", type=Path, default=DEFAULT_REFERENCE_CACHE)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--diagnostic-dir",
+        type=Path,
+        default=DEFAULT_DIAGNOSTIC_DIR,
+        help=(
+            "Directory for raw calibration-logit diagnostics "
+            "(default: repository root)."
+        ),
+    )
     parser.add_argument("--device", default="cpu")
     return parser.parse_args()
 
@@ -54,101 +64,174 @@ def load_records(path: Path) -> list[dict[str, object]]:
 
 
 @torch.inference_mode()
-def collect_components(records, data_root, encoder, prompt_bank, reference_bank):
-    language_scores, reference_scores, labels = [], [], []
+def collect_scores(
+    records: list[dict[str, object]],
+    data_root: Path,
+    encoder: CLIPEncoder,
+    prompt_bank: PromptBank,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    # Keep this import lazy: fitting unit tests only need the optimizer and
+    # should not require an installed/downloaded OpenCLIP model.
+    from app.core.fusion import fuse_scores
+
+    scores, labels, components = [], [], []
+
     for index, record in enumerate(records, start=1):
         category = str(record["category"])
         image_path = data_root / str(record["image_path"])
         if not image_path.is_file():
             raise FileNotFoundError(f"Calibration image not found: {image_path}")
+
         with Image.open(image_path) as image:
             embeddings = encoder.encode_image(encoder.prepare_image(image))
+
         prompts = prompt_bank.get(category)
-        reference = reference_bank.score(category, embeddings)
-        language = fuse_scores(embeddings, prompts, reference_score=None)
-        language_scores.append(language.defect_logit.cpu())
-        reference_scores.append(reference.image_score.cpu())
+        result = fuse_scores(embeddings, prompts)
+        scores.append(result.defect_logit.cpu())
+        components.append(
+            torch.stack(
+                (
+                    result.anomalous_global - result.normal_global,
+                    result.anomalous_local - result.normal_local,
+                ),
+                dim=1,
+            ).cpu()
+        )
         labels.append(int(record["label"]))
+
         if index % 50 == 0 or index == len(records):
             print(f"Encoded {index}/{len(records)} calibration images")
-    return torch.cat(language_scores), torch.cat(reference_scores), torch.tensor(labels, dtype=torch.float64)
 
-
-def fit_parameters(language, reference, labels):
-    # These tensors may originate from torch.inference_mode(); clone them into
-    # ordinary tensors before LBFGS needs them for its backward pass.
-    language = language.detach().clone().double()
-    reference = reference.detach().clone().double()
-    labels = labels.detach().clone().double()
-
-    # The original three-parameter form has a scale redundancy:
-    # (a*language + b*reference) / temperature is unchanged if all three
-    # parameters are multiplied by the same positive constant. Fit the
-    # equivalent identifiable form with reference weight fixed at 1.0.
-    log_temperature = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-    log_language_ratio = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-    optimizer = torch.optim.LBFGS(
-        [log_temperature, log_language_ratio],
-        lr=0.1, max_iter=100, line_search_fn="strong_wolfe"
+    return (
+        torch.cat(scores).double(),
+        torch.tensor(labels, dtype=torch.float64),
+        torch.cat(components).double(),
     )
 
-    def closure():
+
+def fit_temperature(
+    defect_logits: torch.Tensor,
+    labels: torch.Tensor,
+) -> tuple[float, float, float]:
+    """Fit a positive temperature and an intercept by minimizing binary NLL.
+
+    Raw CLIP similarity differences are scores, not calibrated log odds.  A
+    temperature alone can only soften or sharpen probabilities around 0.5;
+    it cannot account for the class prevalence of a held-out split.  The
+    intercept supplies that missing degree of freedom while the temperature
+    preserves the detector's score ordering.
+    """
+    logits = defect_logits.detach().clone().double()
+    targets = labels.detach().clone().double()
+    if logits.ndim != 1 or targets.ndim != 1 or logits.shape != targets.shape:
+        raise ValueError("Logits and labels must be matching one-dimensional tensors.")
+    if not torch.isfinite(logits).all() or not torch.isfinite(targets).all():
+        raise ValueError("Logits and labels must be finite.")
+    if not torch.all((targets == 0) | (targets == 1)):
+        raise ValueError("Labels must be binary (0 or 1).")
+
+    log_temperature = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+    bias = torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+    optimizer = torch.optim.LBFGS(
+        [log_temperature, bias],
+        lr=0.1,
+        max_iter=200,
+        line_search_fn="strong_wolfe",
+    )
+
+    def closure() -> torch.Tensor:
         optimizer.zero_grad()
-        temperature = log_temperature.exp().clamp(0.05, 20.0)
-        language_ratio = log_language_ratio.exp()
-        logits = (language_ratio * language + reference) / temperature
-        loss = functional.binary_cross_entropy_with_logits(logits, labels)
+        # No arbitrary calibration bounds: a boundary solution is evidence
+        # about the data, not a valid fitted parameter.  float64 keeps the
+        # exponent stable for the score scales produced by CLIP similarities.
+        temperature = log_temperature.exp()
+        loss = functional.binary_cross_entropy_with_logits(
+            logits / temperature + bias,
+            targets,
+        )
         loss.backward()
         return loss
 
     optimizer.step(closure)
+
     with torch.inference_mode():
-        temperature = float(log_temperature.exp().clamp(0.05, 20.0))
-        language_weight = float(log_language_ratio.exp())
-        reference_weight = 1.0
-        logits = (language_weight * language + reference) / temperature
-        nll = float(functional.binary_cross_entropy_with_logits(logits, labels))
-    return temperature, language_weight, reference_weight, nll
+        temperature = float(log_temperature.exp())
+        fitted_bias = float(bias)
+        nll = float(
+            functional.binary_cross_entropy_with_logits(
+                logits / temperature + fitted_bias,
+                targets,
+            )
+        )
+
+    if not all(np.isfinite(value) for value in (temperature, fitted_bias, nll)):
+        raise RuntimeError("Calibration optimization produced non-finite values.")
+    return temperature, fitted_bias, nll
+
+
+def save_diagnostics(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    components: torch.Tensor,
+    output_dir: Path,
+) -> tuple[Path, Path, Path]:
+    """Save raw calibration inputs for standalone investigation."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    logits_path = output_dir / "calib_logits.npy"
+    labels_path = output_dir / "calib_labels.npy"
+    components_path = output_dir / "calib_score_components.npy"
+
+    np.save(logits_path, logits.detach().cpu().numpy())
+    np.save(labels_path, labels.detach().cpu().numpy())
+    np.save(components_path, components.detach().cpu().numpy())
+
+    return logits_path, labels_path, components_path
 
 
 def main() -> None:
     args = parse_arguments()
     if not args.manifest.is_file():
         raise FileNotFoundError(f"Manifest not found: {args.manifest}")
-    if not args.reference_manifest.is_file():
-        raise FileNotFoundError(f"Reference manifest not found: {args.reference_manifest}")
 
     records = load_records(args.manifest)
+    from app.core.clip_encoder import MODEL_NAME, PRETRAINED_CHECKPOINT, CLIPEncoder
+    from app.core.prompts import PromptBank
+
     encoder = CLIPEncoder(device=args.device)
     prompt_bank = PromptBank(encoder)
-    reference_bank = NormalReferenceBank(
-        encoder, args.data_root, args.reference_manifest, args.reference_cache
+    logits, labels, components = collect_scores(
+        records,
+        args.data_root,
+        encoder,
+        prompt_bank,
     )
-    language, reference, labels = collect_components(
-        records, args.data_root, encoder, prompt_bank, reference_bank
+    logits_path, labels_path, components_path = save_diagnostics(
+        logits,
+        labels,
+        components,
+        args.diagnostic_dir,
     )
-    temperature, language_weight, reference_weight, nll = fit_parameters(
-        language, reference, labels
-    )
+    temperature, bias, nll = fit_temperature(logits, labels)
 
     config = CalibrationConfig(
         temperature=temperature,
-        language_weight=language_weight,
-        reference_weight=reference_weight,
+        bias=bias,
         model_name=MODEL_NAME,
         pretrained_checkpoint=PRETRAINED_CHECKPOINT,
         calibration_manifest_hash=file_sha256(args.manifest),
-        reference_manifest_hash=file_sha256(args.reference_manifest),
         prompt_cache_key=prompt_bank.cache_key,
         fitted_at=datetime.now(timezone.utc).isoformat(),
         calibration_nll=nll,
     )
     save_calibration(config, args.output)
+
     print(f"Temperature: {temperature:.6f}")
-    print(f"Language weight: {language_weight:.6f}")
-    print(f"Reference weight: {reference_weight:.6f}")
+    print(f"Calibration bias: {bias:.6f}")
     print(f"Calibration NLL: {nll:.6f}")
     print(f"Saved: {args.output}")
+    print(f"Diagnostic logits: {logits_path}")
+    print(f"Diagnostic labels: {labels_path}")
+    print(f"Diagnostic score components: {components_path}")
 
 
 if __name__ == "__main__":

@@ -37,12 +37,21 @@ def test_higher_temperature_softens_probabilities() -> None:
     assert softened_probability > 0.5
 
 
+def test_bias_shifts_the_calibrated_base_rate() -> None:
+    probabilities = calibrate_probability(
+        torch.tensor([0.0]), temperature=1.0, bias=1.0
+    )
+
+    assert probabilities.item() > 0.5
+
+
 def test_calibration_file_round_trip(tmp_path: Path) -> None:
     """A saved calibration configuration can be loaded unchanged."""
     calibration_path = tmp_path / "calibration.json"
 
     saved_config = CalibrationConfig(
         temperature=0.84,
+        bias=-0.23,
         model_name="ViT-B-32-quickgelu",
         pretrained_checkpoint="openai",
         calibration_manifest_hash="test-manifest-hash",

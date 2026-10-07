@@ -8,3 +8,8 @@ artifacts/evaluations/
 .env
 .pytest_cache/
 backend/.pytest-tmp/
+calib_logits.npy
+calib_labels.npy
+calib_score_components.npy
+# Generated heatmap overlays (keep only curated examples tracked)
+backend/artifacts/*.png

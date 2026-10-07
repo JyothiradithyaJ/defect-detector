@@ -1,4 +1,4 @@
-"""Unit tests for language/reference anomaly fusion."""
+"""Unit tests for pure zero-shot CLIP language fusion."""
 
 from pathlib import Path
 import sys
@@ -9,10 +9,19 @@ import torch
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
-from app.core.clip_encoder import EMBEDDING_DIM, PATCH_COUNT, PATCH_GRID_SIZE, ImageEmbeddings
-from app.core.fusion import GLOBAL_WEIGHT, LOCAL_WEIGHT, fuse_scores
-from app.core.prompts import PromptEmbeddings
-from app.core.reference_bank import ReferenceScore
+from app.core.clip_encoder import (  # noqa: E402
+    EMBEDDING_DIM,
+    PATCH_COUNT,
+    PATCH_GRID_SIZE,
+    ImageEmbeddings,
+)
+from app.core.fusion import (  # noqa: E402
+    GLOBAL_WEIGHT,
+    LOCAL_WEIGHT,
+    average_flip_heatmaps,
+    fuse_scores,
+)
+from app.core.prompts import PromptEmbeddings  # noqa: E402
 
 
 def _make_embeddings():
@@ -22,7 +31,12 @@ def _make_embeddings():
     anomalous[1] = 1.0
     global_embedding = normal.unsqueeze(0)
     patches = normal.repeat(PATCH_COUNT, 1)
-    patches[10] = anomalous
+
+    # Top-10% averaging needs every selected patch to be hot to produce a
+    # clean local score of 1.0; this is not a max-pooling test.
+    top_count = max(1, int(PATCH_COUNT * 0.10))
+    patches[:top_count] = anomalous
+
     return (
         ImageEmbeddings(
             global_embedding=global_embedding,
@@ -39,11 +53,22 @@ def test_fusion_returns_expected_output_shapes():
     assert result.anomalous_global.shape == (1,)
     assert result.normal_local.shape == (1,)
     assert result.anomalous_local.shape == (1,)
-    assert result.reference_local.shape == (1,)
-    assert result.normal_patch_grid.shape == (1, PATCH_GRID_SIZE, PATCH_GRID_SIZE)
-    assert result.anomalous_patch_grid.shape == (1, PATCH_GRID_SIZE, PATCH_GRID_SIZE)
+    assert result.normal_patch_grid.shape == (
+        1,
+        PATCH_GRID_SIZE,
+        PATCH_GRID_SIZE,
+    )
+    assert result.anomalous_patch_grid.shape == (
+        1,
+        PATCH_GRID_SIZE,
+        PATCH_GRID_SIZE,
+    )
     assert result.defect_logit.shape == (1,)
-    assert result.heatmap.shape == (1, PATCH_GRID_SIZE, PATCH_GRID_SIZE)
+    assert result.heatmap.shape == (
+        1,
+        PATCH_GRID_SIZE,
+        PATCH_GRID_SIZE,
+    )
 
 
 def test_fusion_uses_explicit_language_weights():
@@ -52,30 +77,31 @@ def test_fusion_uses_explicit_language_weights():
     expected = GLOBAL_WEIGHT * (0.0 - 1.0) + LOCAL_WEIGHT * (1.0 - 1.0)
     assert torch.allclose(result.defect_logit, torch.tensor([expected]))
     assert torch.allclose(result.normal_fused, torch.tensor([2.0]))
-    assert torch.allclose(result.anomalous_fused, torch.tensor([2.0 + expected]))
-
-
-def test_reference_score_contributes_to_image_and_heatmap():
-    image_embeddings, prompts = _make_embeddings()
-    patch_score = torch.full((1, PATCH_COUNT), 0.2)
-    patch_score[0, 10] = 0.8
-    reference = ReferenceScore(image_score=torch.tensor([0.8]), patch_score=patch_score)
-    result = fuse_scores(
-        image_embeddings,
-        prompts,
-        reference_score=reference,
-        reference_weight=0.5,
+    assert torch.allclose(
+        result.anomalous_fused,
+        torch.tensor([2.0 + expected]),
     )
-    language_only = GLOBAL_WEIGHT * (-1.0)
-    assert torch.allclose(result.defect_logit, torch.tensor([language_only + 0.4]))
-    assert result.heatmap[0, 10 // PATCH_GRID_SIZE, 10 % PATCH_GRID_SIZE] > 0
 
 
 def test_fusion_rejects_invalid_patch_shape():
     image_embeddings, prompts = _make_embeddings()
     invalid = ImageEmbeddings(
         global_embedding=image_embeddings.global_embedding,
-        patch_embeddings=torch.zeros(1, PATCH_COUNT - 1, EMBEDDING_DIM),
+        patch_embeddings=torch.zeros(
+            1,
+            PATCH_COUNT - 1,
+            EMBEDDING_DIM,
+        ),
     )
     with pytest.raises(ValueError, match="Patch embeddings must have shape"):
         fuse_scores(invalid, prompts)
+
+
+def test_flip_heatmap_average_returns_original_coordinate_frame():
+    """The flipped map is unflipped before ensembling."""
+    original = torch.tensor([[[1.0, 2.0, 3.0]]])
+    flipped = torch.tensor([[[3.0, 2.0, 1.0]]])
+
+    heatmap = average_flip_heatmaps(original, flipped)
+
+    assert torch.equal(heatmap, original)

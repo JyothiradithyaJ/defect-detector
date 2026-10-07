@@ -13,9 +13,11 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.core.evaluation import (  # noqa: E402
     expected_calibration_error,
     image_auroc,
+    pixel_auroc,
     pixel_aupro,
     tensor_heatmap_to_numpy,
 )
+from scripts.evaluate_mvtec import metric_size  # noqa: E402
 
 
 def test_image_auroc_is_one_for_perfect_ranking() -> None:
@@ -61,10 +63,22 @@ def test_pixel_aupro_is_high_for_a_perfect_heatmap() -> None:
         score_maps=score_maps,
         masks=masks,
         max_false_positive_rate=0.30,
-        thresholds=20,
     )
 
     assert score > 0.95
+
+
+def test_pixel_auroc_is_one_for_a_perfect_heatmap() -> None:
+    masks = np.zeros((1, 3, 3), dtype=bool)
+    masks[0, 1, 1] = True
+
+    assert pixel_auroc(masks.astype(np.float64), masks) == 1.0
+
+
+def test_metric_size_preserves_aspect_ratio_with_a_bound() -> None:
+    assert metric_size(width=1024, height=512, max_side=256) == (256, 128)
+    assert metric_size(width=100, height=80, max_side=256) == (100, 80)
+    assert metric_size(width=100, height=80, max_side=0) == (100, 80)
 
 
 def test_pixel_aupro_handles_regions_from_multiple_images() -> None:
@@ -80,7 +94,6 @@ def test_pixel_aupro_handles_regions_from_multiple_images() -> None:
     score = pixel_aupro(
         score_maps=score_maps,
         masks=masks,
-        thresholds=20,
     )
 
     assert score > 0.95
@@ -100,3 +113,28 @@ def test_tensor_heatmap_to_numpy_rejects_invalid_shape() -> None:
     """A batch containing multiple heatmaps is not accepted."""
     with pytest.raises(ValueError, match="heatmap must have shape"):
         tensor_heatmap_to_numpy(torch.zeros(2, 7, 7))
+
+
+@pytest.mark.parametrize(
+    ("scores", "mask", "expected"),
+    [
+        (
+            np.array([[[1.0, 0.0], [0.0, 0.0]]], dtype=np.float32),
+            np.array([[[1, 0], [0, 0]]], dtype=bool),
+            1.0,
+        ),
+        (
+            np.array([[[0.0, 1.0], [1.0, 1.0]]], dtype=np.float32),
+            np.array([[[1, 0], [0, 0]]], dtype=bool),
+            0.0,
+        ),
+        (
+            np.array([[[1.0, 0.5], [0.0, 0.0]]], dtype=np.float32),
+            np.array([[[1, 1], [0, 0]]], dtype=bool),
+            1.0,
+        ),
+    ],
+)
+def test_pixel_aupro_protocol_cases(scores, mask, expected):
+    """Perfect, zero, and fully covered partial-region maps are exact."""
+    assert pixel_aupro(scores, mask) == pytest.approx(expected)
