@@ -13,3 +13,8 @@ calib_labels.npy
 calib_score_components.npy
 # Generated heatmap overlays (keep only curated examples tracked)
 backend/artifacts/*.png
+
+# v3 ignored files
+v3/docs/results/*_logs/
+*.pth
+*.pt

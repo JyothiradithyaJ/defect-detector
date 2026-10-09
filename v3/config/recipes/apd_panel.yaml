@@ -1,0 +1,38 @@
+# Recipe skeleton for APD EV panel per README_v3.md section 6.
+# Concrete polygon coordinates and expected parameters will be drawn on the
+# golden template from documentation in Phase 6. No parameters may be guessed.
+name: apd_panel
+resolution: [1920, 1080]
+view: fixed
+symmetry: none
+stable_roi: []
+rois:
+  - id: ev_port_left_cables
+    kind: order
+    polygon: []
+    severity: 1
+    hard: false
+    params:
+      axis: y
+      expected_sequence: []
+  - id: sensor_right_wires
+    kind: count
+    polygon: []
+    severity: 1
+    hard: false
+    params:
+      expected_count: null
+  - id: red_cap_left
+    kind: presence
+    polygon: []
+    severity: 2
+    hard: false
+    params:
+      target: placeholder_cap
+      area_ratio_range: null
+  - id: pcb_left
+    kind: surface
+    polygon: []
+    severity: 0
+    hard: true
+    params: {}
