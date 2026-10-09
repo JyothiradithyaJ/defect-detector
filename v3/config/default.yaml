@@ -1,0 +1,30 @@
+# Phase 0 freeze configuration. Model/training values will be introduced only in their phase.
+seed: [0, 1, 2]
+precision: fp16
+early_exit: false
+clip:
+  model: ViT-L-14-336
+  pretrained: openai
+  input: 336
+  a: 0.95
+  b: 0.05
+dino:
+  model: dinov2_vitl14_reg
+  short_side: 560
+  topk_frac: 0.001
+match:
+  mode: knn_positional
+  radius: 2
+  agg_radii: [1, 3]
+refs:
+  k: 4
+  source: train_split
+  augment: photometric_only
+fusion:
+  w_d: 1.0
+  w_c: 0.0
+decide:
+  false_reject_rate: 0.05
+  min_mad: 1e-3
+qc:
+  blur_floor_percentile: 5
