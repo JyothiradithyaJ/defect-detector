@@ -122,6 +122,6 @@ def create_v3_category_splits(
     all_samples = calib_samples + eval_samples
 
     val_samples = [s for s in all_samples if s.category in val_categories]
-    eval_heldout_samples = [s for s in eval_samples if s.category in eval_categories]
+    eval_heldout_samples = [s for s in all_samples if s.category in eval_categories]
 
     return val_categories, eval_categories, val_samples, eval_heldout_samples
