@@ -1,13 +1,41 @@
-# Phase 0 freeze configuration. Model/training values will be introduced only in their phase.
+# Phase 2 configuration with D-drive storage paths.
 seed: [0, 1, 2]
 precision: fp16
 early_exit: false
+
+paths:
+  data_root: D:/data/mvtec_ad
+  manifest_dir: data/manifests
+  cache_dir: D:/defect_cache/visual_embeddings
+  results_dir: D:/defect_cache/results
+  logs_dir: D:/defect_cache/logs
+  repo_results_dir: v3/docs/results
+  decisions_md: v3/docs/decisions.md
+  phase1_baseline_json: v3/docs/results/phase_1_logs/v3-category_results.json
+  hf_home: D:/ml_cache/hf
+  torch_home: D:/ml_cache/torch
+  temp_dir: D:/ml_cache/tmp
+
 clip:
+  backbones:
+    clip_b32_224:
+      model: ViT-B-32-quickgelu
+      pretrained: openai
+      input: 224
+      precision: fp32
+    clip_l14_336:
+      model: ViT-L-14-336
+      pretrained: openai
+      input: 336
+      precision: fp16
   model: ViT-L-14-336
   pretrained: openai
   input: 336
   a: 0.95
   b: 0.05
+  batch_size: 8
+  fallback_batch_size: 4
+
 dino:
   model: dinov2_vitl14_reg
   short_side: 560
