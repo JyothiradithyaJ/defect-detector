@@ -189,15 +189,20 @@ def main() -> int:
             best_val_score = -1.0
             val_selection_table: list[dict] = []
 
+            val_preloaded: dict[str, tuple[list[DatasetSample], list[CachedDINOFeatures], list, list[Path]]] = {}
+            for cat in val_cats:
+                c_samples = [s for s in val_samples if s.category == cat]
+                c_feats = [extractor.get_features(s.image_path) for s in c_samples]
+                c_masks = load_category_masks(c_samples)
+                pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
+                refs = random.Random(0).sample(pool, min(4, len(pool)))
+                val_preloaded[cat] = (c_samples, c_feats, c_masks, refs)
+
             for sc_name in scorers:
                 for agg_r in agg_radii:
                     val_cat_scores: list[float] = []
                     for cat in val_cats:
-                        c_samples = [s for s in val_samples if s.category == cat]
-                        c_feats = [extractor.get_features(s.image_path) for s in c_samples]
-                        c_masks = load_category_masks(c_samples)
-                        pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
-                        refs = random.Random(0).sample(pool, min(4, len(pool)))
+                        c_samples, c_feats, c_masks, refs = val_preloaded[cat]
                         m = evaluate_single_run(
                             sc_name, extractor, refs, c_samples, c_feats, c_masks,
                             pos_radius=pos_radius, agg_radius=agg_r, topk_frac=topk_frac,

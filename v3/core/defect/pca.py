@@ -53,18 +53,22 @@ class PCAResidualScorer:
 
         mean = np.mean(flat, axis=0, keepdims=True)
         centered = flat - mean
-        _, s, vt = np.linalg.svd(centered, full_matrices=False)
-        var = s**2
+        cov = centered.T @ centered  # [D, D]
+        eigvals, eigvecs = np.linalg.eigh(cov)
+        # Sort descending
+        order = np.argsort(eigvals)[::-1]
+        var = np.maximum(eigvals[order], 0.0)
+        vecs = eigvecs[:, order]
         total_var = float(np.sum(var))
         if total_var <= 1e-12:
             k = 1
         else:
             cum_var = np.cumsum(var) / total_var
             k = int(np.searchsorted(cum_var, self.variance_retained) + 1)
-            k = max(1, min(k, self.max_components, vt.shape[0]))
+            k = max(1, min(k, self.max_components, vecs.shape[1]))
 
         self._mean = mean.astype(np.float32)
-        self._components = vt[:k].T.astype(np.float32)  # [D, K]
+        self._components = vecs[:, :k].astype(np.float32)  # [D, K]
 
     def fit_features(
         self,
@@ -89,9 +93,10 @@ class PCAResidualScorer:
         q = l2_normalize_np(patch_tokens)
         hp, wp, d = q.shape
         centered = q.reshape(-1, d) - self._mean  # [Q, D]
-        proj = (centered @ self._components) @ self._components.T
-        residual = centered - proj
-        res_energy = np.sum(residual**2, axis=-1).reshape(hp, wp).astype(np.float32)
+        coords = centered @ self._components      # [Q, K]
+        total_sq = np.sum(centered * centered, axis=-1)
+        proj_sq = np.sum(coords * coords, axis=-1)
+        res_energy = np.maximum(total_sq - proj_sq, 0.0).reshape(hp, wp).astype(np.float32)
 
         smoothed = aggregate_patch_map(res_energy, radius=self.agg_radius)
         img_score = topk_image_score(smoothed, topk_frac=self.topk_frac)

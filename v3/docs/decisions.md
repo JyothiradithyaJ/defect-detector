@@ -85,3 +85,4 @@ Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
   3. All 12 Hard Rules of `BUILD_PROMPT.md` remain strictly in force.
 - **Phase 3 DINOv2 Download & Check**: status=PASS, elapsed=289.24s (model=dinov2_vitl14_reg)
 - **Step E (Phase 2 Cached Evaluations & Reports)**: status=PASS, elapsed=773.29s (B32_Img=0.7639, L14_Img=0.8493)
+- **Phase 3 Step A (DINO Feature Cache)**: status=PASS, elapsed=297.22s (images=2205, peak_vram=628.4MB)
