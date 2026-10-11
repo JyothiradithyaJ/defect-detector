@@ -1,0 +1,170 @@
+{
+  "global_only": {
+    "global_weight": 1.0,
+    "local_weight": 0.0,
+    "macro_image_auroc": 0.8161131265880937,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.9670947030497592,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.7796428571428572,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.6217008797653959,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.7279166666666665,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.9842105263157894,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  },
+  "fused_095": {
+    "global_weight": 0.95,
+    "local_weight": 0.05,
+    "macro_image_auroc": 0.818317458259805,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.9674959871589085,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.7842857142857145,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.6226783968719453,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.7329166666666668,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.9842105263157894,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  },
+  "fused_090": {
+    "global_weight": 0.9,
+    "local_weight": 0.1,
+    "macro_image_auroc": 0.8174451847393367,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.9670947030497592,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.7853571428571429,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.6202346041055719,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.7320833333333334,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.9824561403508771,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  },
+  "fused_080": {
+    "global_weight": 0.8,
+    "local_weight": 0.2,
+    "macro_image_auroc": 0.8180401118326805,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.9650882825040128,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.7907142857142857,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.6182795698924731,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.7354166666666667,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.9807017543859649,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  },
+  "fused_050": {
+    "global_weight": 0.5,
+    "local_weight": 0.5,
+    "macro_image_auroc": 0.7999235652147271,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.9257624398073836,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.7889285714285714,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.6099706744868034,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.7091666666666666,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.9657894736842105,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  },
+  "local_only": {
+    "global_weight": 0.0,
+    "local_weight": 1.0,
+    "macro_image_auroc": 0.4947653376331864,
+    "macro_pixel_auroc": 0.4576987438932674,
+    "categories": {
+      "carpet": {
+        "image_auroc": 0.4028892455858748,
+        "pixel_auroc": 0.30919358503647293
+      },
+      "hazelnut": {
+        "image_auroc": 0.5532142857142858,
+        "pixel_auroc": 0.6768722776492813
+      },
+      "metal_nut": {
+        "image_auroc": 0.5513196480938416,
+        "pixel_auroc": 0.39793135774036265
+      },
+      "transistor": {
+        "image_auroc": 0.555,
+        "pixel_auroc": 0.6223459266976548
+      },
+      "wood": {
+        "image_auroc": 0.4114035087719299,
+        "pixel_auroc": 0.28215057234256546
+      }
+    }
+  }
+}

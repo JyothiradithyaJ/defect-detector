@@ -18,3 +18,4 @@ backend/artifacts/*.png
 v3/docs/results/*_logs/
 *.pth
 *.pt
+data/cache/
