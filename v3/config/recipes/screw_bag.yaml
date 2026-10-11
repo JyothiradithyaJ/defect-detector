@@ -1,0 +1,27 @@
+# MVTec LOCO Recipe: screw_bag
+# Drafted strictly from MVTec LOCO dataset documentation (1 long screw, 1 short screw, 2 nuts, 2 washers).
+status: draft-needs-human-review
+name: screw_bag
+template_path: D:/data/mvtec_loco/screw_bag/train/good/000.png
+resolution: [1600, 1100]
+view: free
+symmetry: rot
+stable_roi: [[150, 100], [1450, 100], [1450, 1000], [150, 1000]]
+rois:
+  - id: bag_hardware_count
+    kind: count
+    polygon: [[180, 140], [1420, 140], [1420, 960], [180, 960]]
+    severity: 1
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_count: 6
+      min_blob_pixels: 40
+  - id: bag_hardware_presence
+    kind: presence
+    polygon: [[180, 140], [1420, 140], [1420, 960], [180, 960]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params: {}
+

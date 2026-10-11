@@ -99,11 +99,14 @@ class CLIPFeatureExtractor:
     def __init__(
         self,
         backbone_id: str = "clip_b32_224",
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        device: str | None = None,
         precision: str = "fp32",
         cache_dir: Path = DEFAULT_CACHE_DIR,
     ) -> None:
         import open_clip
+
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if backbone_id not in BACKBONE_SPECS:
             raise ValueError(f"Unknown backbone_id '{backbone_id}'. Available: {list(BACKBONE_SPECS.keys())}")
