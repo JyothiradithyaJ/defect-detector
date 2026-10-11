@@ -123,12 +123,18 @@ def evaluate_single_run(
     if scorer_name == "knn_global":
         ref_bank = np.stack([l2_normalize_np(f.patch_tokens) for f in ref_feats], axis=0).reshape(-1, d)
         q_flat = q_stack.reshape(-1, d)
+        n_q = q_flat.shape[0]
         m = ref_bank.shape[0]
-        max_sim = np.full(q_flat.shape[0], -1.0, dtype=np.float32)
-        for start in range(0, m, chunk_size):
-            ref_chunk = ref_bank[start : start + chunk_size]
-            sims = q_flat @ ref_chunk.T
-            max_sim = np.maximum(max_sim, np.max(sims, axis=1))
+        max_sim = np.full(n_q, -1.0, dtype=np.float32)
+        q_step = 16 * hp * wp  # 25,600 rows per batch (~100 MB)
+        r_step = min(chunk_size, 2048)
+        for q0 in range(0, n_q, q_step):
+            q_sub = q_flat[q0 : q0 + q_step]
+            sub_max = max_sim[q0 : q0 + q_step]
+            for r0 in range(0, m, r_step):
+                ref_chunk = ref_bank[r0 : r0 + r_step]
+                sims = q_sub @ ref_chunk.T
+                np.maximum(sub_max, np.max(sims, axis=1), out=sub_max)
         raw_dist_all = (1.0 - max_sim).reshape(n_imgs, hp, wp).astype(np.float32)
     elif scorer_name == "knn_positional":
         ref_bank = np.stack([l2_normalize_np(f.patch_tokens) for f in ref_feats], axis=0)  # [K, hp, wp, d]
@@ -158,11 +164,17 @@ def evaluate_single_run(
         scorer = PCAResidualScorer(extractor=extractor, agg_radius=agg_radius, topk_frac=topk_frac)
         scorer.fit_features(ref_feats, reference_ids=ref_ids)
         assert scorer._mean is not None and scorer._components is not None
-        centered = q_stack.reshape(-1, d) - scorer._mean
-        coords = centered @ scorer._components
-        total_sq = np.sum(centered * centered, axis=-1)
-        proj_sq = np.sum(coords * coords, axis=-1)
-        raw_dist_all = np.maximum(total_sq - proj_sq, 0.0).reshape(n_imgs, hp, wp).astype(np.float32)
+        q_flat = q_stack.reshape(-1, d)
+        n_q = q_flat.shape[0]
+        res_flat = np.empty(n_q, dtype=np.float32)
+        q_step = 16 * hp * wp
+        for q0 in range(0, n_q, q_step):
+            centered = q_flat[q0 : q0 + q_step] - scorer._mean
+            coords = centered @ scorer._components
+            total_sq = np.sum(centered * centered, axis=-1)
+            proj_sq = np.sum(coords * coords, axis=-1)
+            res_flat[q0 : q0 + q_step] = np.maximum(total_sq - proj_sq, 0.0)
+        raw_dist_all = res_flat.reshape(n_imgs, hp, wp)
     else:
         raise ValueError(f"Unknown scorer: {scorer_name}")
 
@@ -188,6 +200,8 @@ def evaluate_single_run(
 
 
 def main() -> int:
+    import gc
+
     args = parse_args()
     t0 = time.perf_counter()
     cfg = load_v3_config(args.config)
@@ -234,36 +248,42 @@ def main() -> int:
             )
 
             # 1. Select best (scorer, agg_radius) strictly on the 5 validation categories at k=4
+            # Outer loop over validation categories so only 1 category is in RAM at a time!
             logger.info(f"Selecting best (scorer, agg_radius) on 5 validation categories ({val_cats}) at k=4...")
             best_scorer = "knn_positional"
             best_agg = 1
             best_val_score = -1.0
             val_selection_table: list[dict] = []
+            val_scores_by_pair: dict[tuple[str, int], list[float]] = {
+                (sc_name, agg_r): [] for sc_name in scorers for agg_r in agg_radii
+            }
 
-            val_preloaded: dict[str, tuple[list[DatasetSample], list[CachedDINOFeatures], list, list[Path], np.ndarray, list[CachedDINOFeatures]]] = {}
             for cat in val_cats:
                 c_samples = [s for s in val_samples if s.category == cat]
                 c_feats = [extractor.get_features(s.image_path) for s in c_samples]
                 q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
+                del c_feats
                 c_masks = load_category_masks(c_samples)
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
                 refs = random.Random(0).sample(pool, min(4, len(pool)))
                 ref_feats = [extractor.get_features(p) for p in refs]
-                val_preloaded[cat] = (c_samples, c_feats, c_masks, refs, q_norm, ref_feats)
 
-            for sc_name in scorers:
-                for agg_r in agg_radii:
-                    val_cat_scores: list[float] = []
-                    for cat in val_cats:
-                        c_samples, c_feats, c_masks, refs, q_norm, ref_feats = val_preloaded[cat]
+                for sc_name in scorers:
+                    for agg_r in agg_radii:
                         m = evaluate_single_run(
-                            sc_name, extractor, refs, c_samples, c_feats, c_masks,
+                            sc_name, extractor, refs, c_samples, [], c_masks,
                             pos_radius=pos_radius, agg_radius=agg_r, topk_frac=topk_frac,
                             chunk_size=chunk_size, compute_aupro=False,
                             q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
                         )
-                        val_cat_scores.append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
-                    mean_val = float(np.mean(val_cat_scores))
+                        val_scores_by_pair[(sc_name, agg_r)].append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
+
+                del q_norm, c_masks, ref_feats
+                gc.collect()
+
+            for sc_name in scorers:
+                for agg_r in agg_radii:
+                    mean_val = float(np.mean(val_scores_by_pair[(sc_name, agg_r)]))
                     val_selection_table.append({"scorer": sc_name, "agg_radius": agg_r, "val_combined_auroc": mean_val})
                     logger.info(f"  [Validation k=4] scorer={sc_name:<15} agg_radius={agg_r} -> Combined AUROC={mean_val:.4f}")
                     if mean_val > best_val_score:
@@ -271,7 +291,6 @@ def main() -> int:
                         best_scorer = sc_name
                         best_agg = agg_r
 
-            del val_preloaded
             logger.info(f"Selected on validation categories: scorer={best_scorer}, agg_radius={best_agg}")
 
             # 2. Evaluate k in [1,2,4,8,16] x seeds [0,1,2] x 3 scorers on the 10 held-out categories
@@ -282,6 +301,7 @@ def main() -> int:
                 c_samples = [s for s in eval_samples if s.category == cat]
                 c_feats = [extractor.get_features(s.image_path) for s in c_samples]
                 q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
+                del c_feats
                 c_masks = load_category_masks(c_samples)
                 n_norm = sum(1 for s in c_samples if s.label == 0)
                 n_anom = sum(1 for s in c_samples if s.label == 1)
@@ -295,7 +315,7 @@ def main() -> int:
                             refs = random.Random(sd).sample(pool, min(k, len(pool)))
                             ref_feats = [pool_feats_map[p] for p in refs]
                             m = evaluate_single_run(
-                                sc_name, extractor, refs, c_samples, c_feats, c_masks,
+                                sc_name, extractor, refs, c_samples, [], c_masks,
                                 pos_radius=pos_radius, agg_radius=best_agg, topk_frac=topk_frac,
                                 chunk_size=chunk_size, compute_aupro=(k == 4),
                                 q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
@@ -329,6 +349,8 @@ def main() -> int:
                             )
                             last_log_t = now
 
+                del q_norm, c_masks, pool_feats_map
+                gc.collect()
                 logger.info(f"  Completed held-out category: {cat} ({len(c_samples)} images)")
 
             csv_path = cfg.results_dir / "phase_3_fewshot.csv"
