@@ -466,10 +466,10 @@ def main() -> int:
             heldout_all: dict[str, dict] = {}
 
             for backbone_id, precision in [("clip_b32_224", "fp32"), ("clip_l14_336", "fp16")]:
-                logger.info(f"\n--- Evaluating Backbone: {backbone_id} ({precision}) ---")
+                logger.info(f"\n--- Evaluating Backbone: {backbone_id} (cache={precision}, text_encoder=cpu) ---")
                 extractor = CLIPFeatureExtractor(
                     backbone_id=backbone_id,
-                    device="cuda" if torch.cuda.is_available() else "cpu",
+                    device="cpu",
                     precision=precision,
                     cache_dir=cfg.cache_dir,
                 )

@@ -66,3 +66,13 @@
 - **Decision**: Resolve local OpenCLIP checkpoints directly from `D:\ml_cache\hf\hub\models--timm--*\snapshots\*\open_clip_model.safetensors` with `HF_HUB_OFFLINE=1` in `v3/core/features.py`.
   - **Reason**: Passing `cache_dir="D:/ml_cache/torch"` to `open_clip` caused `huggingface_hub` to look in `D:\ml_cache\torch` instead of `D:\ml_cache\hf\hub` (where the 1,632.5 MB `ViT-L-14-336` and 577.1 MB `ViT-B-32` `.safetensors` files already exist), triggering an unwanted re-download attempt. Direct snapshot path resolution guarantees zero network downloads.
 - **Decision**: Provide standalone, config-driven scripts for Steps A–E (`v3/eval/step_a_env_check.py`, `v3/eval/step_b_baseline.py`, `v3/eval/step_c_smoke.py`, `v3/eval/step_d_cache_l14.py`, `v3/eval/step_e_evaluate.py`) and execution guide `RUN_COMMANDS.md` in the repo root.
+- **Step A (CUDA & Env Check)**: status=PASS, elapsed=0.27s (GPU=NVIDIA GeForce RTX 4060 Laptop GPU, driver=566.07, free_vram=6.93GB, torch=2.6.0+cu124)
+- **Step B (Baseline 6-Decimal Check)**: status=FAIL, elapsed=0.03s (max_diff=0.261665)
+- **Step B (Baseline 6-Decimal Check)**: status=FAIL, elapsed=0.04s (Baseline check FAILED with max_diff=0.261665 > 1e-6)
+- **Step C (Smoke Run 20 imgs/backbone)**: status=PASS, elapsed=18.37s (B32_VRAM=684.0MB, L14_VRAM=889.0MB)
+- **Step D (L14 fp16 Embedding Cache Build)**: status=PASS, elapsed=121.94s (L14_size=10.401GB, L14_VRAM=991.0MB, sec_per_img=0.3790s)
+- **Step E (Phase 2 Cached Evaluations & Reports)**: status=FAIL, elapsed=66.21s (CUDA error: an illegal memory access was encountered
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+)
