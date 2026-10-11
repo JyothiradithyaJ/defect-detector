@@ -23,12 +23,12 @@ def compute_ordered_slot_signature(image: Image.Image, roi: ROI) -> np.ndarray:
 
     for idx in range(num_slots):
         if axis == "vertical":
-            r0 = int(round(idx * h / num_slots))
-            r1 = int(round((idx + 1) * h / num_slots))
+            r0 = round(idx * h / num_slots)
+            r1 = round((idx + 1) * h / num_slots)
             sub = crop[max(0, r0) : max(r0 + 1, r1), :, :]
         else:
-            c0 = int(round(idx * w / num_slots))
-            c1 = int(round((idx + 1) * w / num_slots))
+            c0 = round(idx * w / num_slots)
+            c1 = round((idx + 1) * w / num_slots)
             sub = crop[:, max(0, c0) : max(c0 + 1, c1), :]
 
         mean_rgb = np.mean(sub / 255.0, axis=(0, 1))
