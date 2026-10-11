@@ -239,6 +239,7 @@ def evaluate_category(
     samples: list[DatasetSample],
     scorer: Phase2Scorer,
     metric_max_side: int = 256,
+    include_aupro_005: bool = True,
 ) -> Phase2CategoryResult:
     """Evaluate samples of a category and return structured metrics."""
     logits: list[float] = []
@@ -271,7 +272,9 @@ def evaluate_category(
 
     img_auroc = image_auroc(labels, logits)
     px_auroc = pixel_auroc(h_stack, m_stack)
-    px_aupro_005 = pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05)
+    px_aupro_005 = (
+        pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05) if include_aupro_005 else 0.0
+    )
     px_aupro_030 = pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.30)
     rec_frr = recall_at_frr(labels, logits, false_reject_rate=0.05)
     ece = expected_calibration_error(probs, labels)

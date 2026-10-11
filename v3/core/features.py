@@ -102,9 +102,8 @@ class CLIPFeatureExtractor:
         device: str | None = None,
         precision: str = "fp32",
         cache_dir: Path = DEFAULT_CACHE_DIR,
+        lazy_load: bool = False,
     ) -> None:
-        import open_clip
-
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -117,14 +116,26 @@ class CLIPFeatureExtractor:
         self.precision = precision
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.pretrained_source = resolve_local_checkpoint(backbone_id)
+        self.model: Any = None
+        self.preprocess: Any = None
+        self.tokenizer: Any = None
+        self._text_only: bool = False
 
-        pretrained_source = resolve_local_checkpoint(backbone_id)
-        load_device = "cpu" if (precision == "fp16" and self.device.type == "cuda") else self.device
+        if not lazy_load:
+            self._ensure_model_loaded()
+
+    def _ensure_model_loaded(self) -> None:
+        if self.model is not None and not self._text_only:
+            return
+        import open_clip
+
+        load_device = "cpu" if (self.precision == "fp16" and self.device.type == "cuda") else self.device
         hf_hub_cache = str(Path(os.environ.get("HF_HOME", "D:/ml_cache/hf")) / "hub")
 
         model, _, preprocess = open_clip.create_model_and_transforms(
             self.spec["model_name"],
-            pretrained=pretrained_source,
+            pretrained=self.pretrained_source,
             device=load_device,
             cache_dir=hf_hub_cache,
         )
@@ -132,13 +143,50 @@ class CLIPFeatureExtractor:
         for param in model.parameters():
             param.requires_grad_(False)
 
-        if precision == "fp16" and self.device.type == "cuda":
+        if self.precision == "fp16" and self.device.type == "cuda":
             model = model.half().to(self.device)
 
         self.model = model
         self.preprocess = preprocess
         self.tokenizer = open_clip.get_tokenizer(self.spec["model_name"])
-        self.pretrained_source = pretrained_source
+        self._text_only = False
+
+    def _ensure_text_model_loaded(self) -> None:
+        """Load only the text tower weights from local safetensors to avoid 1.2GB visual tower RAM spike."""
+        if self.model is not None:
+            return
+        import gc
+
+        import open_clip
+
+        ckpt_path = Path(self.pretrained_source)
+        if ckpt_path.is_file() and ckpt_path.suffix == ".safetensors":
+            from safetensors import safe_open
+
+            model = open_clip.create_model(self.spec["model_name"], pretrained=None, device="cpu")
+            model.visual = None
+            gc.collect()
+            param_map = dict(model.named_parameters())
+            buf_map = dict(model.named_buffers())
+            with torch.no_grad(), safe_open(str(ckpt_path), framework="pt", device="cpu") as f:
+                for k in f.keys():
+                    if k.startswith("visual."):
+                        continue
+                    if k in param_map:
+                        param_map[k].copy_(f.get_tensor(k))
+                    elif k in buf_map:
+                        buf_map[k].copy_(f.get_tensor(k))
+            model.eval()
+            for param in model.parameters():
+                param.requires_grad_(False)
+            if self.device.type == "cuda":
+                model = model.to(self.device)
+            self.model = model
+            self.tokenizer = open_clip.get_tokenizer(self.spec["model_name"])
+            self._text_only = True
+            return
+
+        self._ensure_model_loaded()
 
     def compute_image_hash(self, image_path: Path) -> str:
         """Calculate SHA-256 of raw image file."""
@@ -153,6 +201,7 @@ class CLIPFeatureExtractor:
     @torch.inference_mode()
     def _extract_visual_features_raw(self, image: Image.Image) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Extract global, intermediate patch, and final layer patch features."""
+        self._ensure_model_loaded()
         batch = self.preprocess(image.convert("RGB")).unsqueeze(0).to(self.device)
         if self.precision == "fp16" and self.device.type == "cuda":
             batch = batch.half()
@@ -251,6 +300,9 @@ class CLIPFeatureExtractor:
     @torch.inference_mode()
     def encode_text(self, prompts: list[str]) -> np.ndarray:
         """Encode text prompt strings to normalized numpy vectors [num_prompts, D]."""
+        self._ensure_text_model_loaded()
         tokens = self.tokenizer(prompts).to(self.device)
         text_features = self.model.encode_text(tokens, normalize=True)
         return text_features.float().cpu().numpy()
+
+

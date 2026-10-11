@@ -212,12 +212,39 @@ SPECIFIC_TEMPLATES: tuple[str, ...] = (
 )
 
 
+_GLOBAL_TEXT_CACHE: dict[tuple[str, str], tuple[np.ndarray, np.ndarray]] = {}
+
+
 class DomainPromptBank:
     """Prompt bank using generic domain knowledge defect vocabulary."""
 
     def __init__(self, feature_extractor: Any) -> None:
         self.feature_extractor = feature_extractor
         self._cache: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+        self._backbone_id = getattr(feature_extractor, "backbone_id", None)
+        cache_dir = getattr(feature_extractor, "cache_dir", None)
+        self._disk_cache_path = (
+            Path(cache_dir) / f"domain_text_embeddings_{self._backbone_id}.npz"
+            if (cache_dir is not None and self._backbone_id is not None)
+            else None
+        )
+        if self._disk_cache_path is not None and self._disk_cache_path.is_file():
+            try:
+                with np.load(self._disk_cache_path) as data:
+                    for key in data.files:
+                        if key.endswith("__norm"):
+                            cat = key[: -len("__norm")]
+                            def_key = f"{cat}__def"
+                            if def_key in data.files:
+                                pair = (
+                                    np.array(data[key], dtype=np.float32),
+                                    np.array(data[def_key], dtype=np.float32),
+                                )
+                                self._cache[cat] = pair
+                                if self._backbone_id is not None:
+                                    _GLOBAL_TEXT_CACHE[(self._backbone_id, cat)] = pair
+            except OSError:
+                pass
 
     def get_prompts_for_category(self, category: str) -> tuple[list[str], list[str]]:
         """Return normal and defect text prompts for a given category."""
@@ -239,6 +266,10 @@ class DomainPromptBank:
         """Return mean normalized normal and defect text embeddings [D]."""
         if category in self._cache:
             return self._cache[category]
+        if self._backbone_id is not None and (self._backbone_id, category) in _GLOBAL_TEXT_CACHE:
+            pair = _GLOBAL_TEXT_CACHE[(self._backbone_id, category)]
+            self._cache[category] = pair
+            return pair
 
         norm_prompts, def_prompts = self.get_prompts_for_category(category)
         norm_emb = self.feature_extractor.encode_text(norm_prompts)  # [N, D]
@@ -253,5 +284,21 @@ class DomainPromptBank:
 
         result = (mean_norm.astype(np.float32), mean_def.astype(np.float32))
         self._cache[category] = result
+        if self._backbone_id is not None:
+            _GLOBAL_TEXT_CACHE[(self._backbone_id, category)] = result
+        self._persist_disk_cache()
         return result
+
+    def _persist_disk_cache(self) -> None:
+        if self._disk_cache_path is None:
+            return
+        try:
+            payload: dict[str, np.ndarray] = {}
+            for cat, (n_emb, d_emb) in self._cache.items():
+                payload[f"{cat}__norm"] = n_emb
+                payload[f"{cat}__def"] = d_emb
+            np.savez(self._disk_cache_path, **payload)
+        except OSError:
+            pass
+
 

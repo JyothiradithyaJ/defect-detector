@@ -96,7 +96,7 @@ def run_polarity_ablation(
         cat_rows = {}
         for cat in categories:
             c_samples = [s for s in samples if s.category == cat]
-            res = evaluate_category(cat, c_samples, scorer)
+            res = evaluate_category(cat, c_samples, scorer, include_aupro_005=False)
             cat_rows[cat] = {
                 "image_auroc": res.image_auroc,
                 "pixel_auroc": res.pixel_auroc,
@@ -471,17 +471,45 @@ def main() -> int:
                 seed=42,
             )
 
+            all_categories = sorted({s.category for s in val_samples} | {s.category for s in eval_samples})
+            from v3.core.vocabulary import DomainPromptBank
+
+            # Pre-cache text embeddings first when memory is clean (loads text tower only)
+            for backbone_id, precision in [("clip_l14_336", "fp16"), ("clip_b32_224", "fp32")]:
+                ext = CLIPFeatureExtractor(
+                    backbone_id=backbone_id,
+                    device="cpu",
+                    precision=precision,
+                    cache_dir=cfg.cache_dir,
+                    lazy_load=True,
+                )
+                bank = DomainPromptBank(ext)
+                for cat in all_categories:
+                    bank.get_embeddings(cat)
+                del bank, ext
+                gc.collect()
+
             polarity_all: dict[str, dict] = {}
             sweep_all: dict[str, dict] = {}
             heldout_all: dict[str, dict] = {}
 
             for backbone_id, precision in [("clip_b32_224", "fp32"), ("clip_l14_336", "fp16")]:
-                logger.info(f"\n--- Evaluating Backbone: {backbone_id} (cache={precision}, text_encoder=cpu) ---")
+                backbone_cache_path = cfg.results_dir / f"step_e_eval_{backbone_id}.json"
+                if backbone_cache_path.is_file():
+                    logger.info(f"\n--- Loading cached Step E results for {backbone_id} from {backbone_cache_path} ---")
+                    cached_b = json.loads(backbone_cache_path.read_text(encoding="utf-8"))
+                    polarity_all[backbone_id] = cached_b["polarity"]
+                    sweep_all[backbone_id] = cached_b["sweep"]
+                    heldout_all[backbone_id] = cached_b["heldout"]
+                    continue
+
+                logger.info(f"\n--- Evaluating Backbone: {backbone_id} (cache={precision}, lazy_load=True) ---")
                 extractor = CLIPFeatureExtractor(
                     backbone_id=backbone_id,
                     device="cpu",
                     precision=precision,
                     cache_dir=cfg.cache_dir,
+                    lazy_load=True,
                 )
 
                 # 1. Polarity mechanism evaluation on held-out categories (no per-category sign flipping)
@@ -511,6 +539,18 @@ def main() -> int:
                     global_weight=best_gw,
                     local_weight=best_lw,
                     logger=logger,
+                )
+
+                backbone_cache_path.write_text(
+                    json.dumps(
+                        {
+                            "polarity": polarity_all[backbone_id],
+                            "sweep": sweep_all[backbone_id],
+                            "heldout": heldout_all[backbone_id],
+                        },
+                        indent=2,
+                    ),
+                    encoding="utf-8",
                 )
 
                 del extractor
