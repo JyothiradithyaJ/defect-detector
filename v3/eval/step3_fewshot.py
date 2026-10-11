@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gc
 import json
 import random
 import sys
@@ -25,7 +26,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
+import torch
 from PIL import Image
+from torch.nn import functional as F
 
 from v3.config import (
     DEFAULT_CONFIG_PATH,
@@ -34,8 +37,12 @@ from v3.config import (
     load_v3_config,
     log_decision,
 )
-from v3.core.bank import CachedDINOFeatures, DINOFeatureExtractor
-from v3.core.defect.aggregate import upsample_patch_map
+from v3.core.bank import CachedDINOFeatures, DINOFeatureExtractor, l2_normalize_np
+from v3.core.defect.aggregate import (
+    aggregate_patch_map,
+    topk_image_score,
+    upsample_patch_map,
+)
 from v3.core.defect.knn import GlobalKNNScorer
 from v3.core.defect.pca import PCAResidualScorer
 from v3.core.mismatch.positional_knn import PositionalKNNScorer
@@ -89,6 +96,122 @@ def load_category_masks(samples: list[DatasetSample], metric_max_side: int = 256
     return out
 
 
+@torch.inference_mode()
+def precompute_per_ref_maps(
+    q_stack: np.ndarray,
+    unique_refs: list[Path],
+    pool_feats_map: dict[Path, CachedDINOFeatures],
+    pos_radius: int,
+    device: torch.device,
+) -> tuple[dict[Path, np.ndarray], dict[Path, np.ndarray]]:
+    """Precompute per-reference-image max cosine similarity maps [N, H_p, W_p] for knn_global and knn_positional.
+
+    Because max over references is associative:
+      max_{p in U_{r in S} R_r} <q, p> == max_{r in S} (max_{p in R_r} <q, p>)
+    precomputing per-reference similarity maps once per unique reference image is 100% mathematically
+    identical while eliminating redundant dot products across k in [1,2,4,8,16] and seeds [0,1,2].
+    """
+    n_imgs, hp, wp, d = q_stack.shape
+    q_t = torch.from_numpy(q_stack).to(device=device, dtype=torch.float32)
+    q_flat = q_t.reshape(-1, d)  # [N*H_p*W_p, D]
+
+    global_maps: dict[Path, np.ndarray] = {}
+    pos_maps: dict[Path, np.ndarray] = {}
+    rad = pos_radius
+    q_step = 32 * hp * wp
+
+    for ref_p in unique_refs:
+        ref_np = l2_normalize_np(pool_feats_map[ref_p].patch_tokens)  # [H_p, W_p, D]
+        ref_t = torch.from_numpy(ref_np).to(device=device, dtype=torch.float32)
+        ref_flat = ref_t.reshape(-1, d)  # [H_p*W_p, D]
+
+        # 1. Global max similarity against single reference image
+        g_max = torch.empty(q_flat.shape[0], dtype=torch.float32, device=device)
+        for q0 in range(0, q_flat.shape[0], q_step):
+            sims = q_flat[q0 : q0 + q_step] @ ref_flat.T
+            g_max[q0 : q0 + q_step] = sims.max(dim=1).values
+        global_maps[ref_p] = g_max.reshape(n_imgs, hp, wp).cpu().numpy()
+
+        # 2. Positional window max similarity against single reference image
+        p_max = torch.full((n_imgs, hp, wp), -1.0, dtype=torch.float32, device=device)
+        for dr in range(-rad, rad + 1):
+            r_q_start = max(0, -dr)
+            r_q_end = min(hp, hp - dr)
+            r_ref_start = r_q_start + dr
+            r_ref_end = r_q_end + dr
+            for dc in range(-rad, rad + 1):
+                c_q_start = max(0, -dc)
+                c_q_end = min(wp, wp - dc)
+                c_ref_start = c_q_start + dc
+                c_ref_end = c_q_end + dc
+                q_sub = q_t[:, r_q_start:r_q_end, c_q_start:c_q_end, :]
+                r_sub = ref_t[r_ref_start:r_ref_end, c_ref_start:c_ref_end, :].unsqueeze(0)
+                sim_shift = (q_sub * r_sub).sum(dim=-1)
+                p_max[:, r_q_start:r_q_end, c_q_start:c_q_end] = torch.maximum(
+                    p_max[:, r_q_start:r_q_end, c_q_start:c_q_end],
+                    sim_shift,
+                )
+        pos_maps[ref_p] = p_max.cpu().numpy()
+
+    del q_t, q_flat
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return global_maps, pos_maps
+
+
+def score_maps_to_metrics(
+    raw_dist_all: np.ndarray,
+    labels: list[int],
+    masks_and_dims: list[tuple[np.ndarray, int, int]],
+    m_stack_uniform: np.ndarray | None,
+    agg_radius: int,
+    topk_frac: float,
+    compute_aupro: bool,
+) -> dict[str, float]:
+    """Smooth patch maps, compute top-k% image scores, upsample, and compute AUROC/AU-PRO."""
+    n_imgs, hp, wp = raw_dist_all.shape
+
+    # Fast batched smoothing & upsampling when all category masks share (mh, mw)
+    if m_stack_uniform is not None:
+        mh, mw = m_stack_uniform.shape[1], m_stack_uniform.shape[2]
+        t_raw = torch.from_numpy(raw_dist_all).unsqueeze(1)  # [N, 1, hp, wp]
+        if agg_radius > 0:
+            # Exact match to aggregate_patch_map (edge-clamped box mean)
+            padded = F.pad(t_raw, (agg_radius, agg_radius, agg_radius, agg_radius), mode="replicate")
+            ksize = 2 * agg_radius + 1
+            t_smooth = F.avg_pool2d(padded, kernel_size=ksize, stride=1)
+        else:
+            t_smooth = t_raw
+
+        flat = t_smooth.reshape(n_imgs, -1)
+        k_top = max(1, round(hp * wp * topk_frac))
+        img_scores = torch.topk(flat, k=k_top, dim=1).values.mean(dim=1).numpy().tolist()
+
+        h_stack = (
+            F.interpolate(t_smooth, size=(mh, mw), mode="bilinear", align_corners=False)
+            .squeeze(1)
+            .numpy()
+        )
+        m_stack = m_stack_uniform
+    else:
+        img_scores = []
+        heatmaps = []
+        masks = []
+        for i, (gt_mask, mh, mw) in enumerate(masks_and_dims):
+            smoothed = aggregate_patch_map(raw_dist_all[i], radius=agg_radius)
+            img_scores.append(topk_image_score(smoothed, topk_frac=topk_frac))
+            heatmaps.append(upsample_patch_map(smoothed, (mh, mw)))
+            masks.append(gt_mask)
+        h_stack = np.stack(heatmaps)
+        m_stack = np.stack(masks)
+
+    return {
+        "image_auroc": image_auroc(labels, img_scores),
+        "pixel_auroc": pixel_auroc(h_stack, m_stack),
+        "pixel_aupro_005": pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05) if compute_aupro else 0.0,
+    }
+
+
 def evaluate_single_run(
     scorer_name: str,
     extractor: DINOFeatureExtractor,
@@ -103,64 +226,33 @@ def evaluate_single_run(
     compute_aupro: bool = True,
     q_norm_stack: np.ndarray | None = None,
     ref_feats_preloaded: list[CachedDINOFeatures] | None = None,
+    global_sim_cache: dict[Path, np.ndarray] | None = None,
+    pos_sim_cache: dict[Path, np.ndarray] | None = None,
+    m_stack_uniform: np.ndarray | None = None,
 ) -> dict[str, float]:
     """Fit scorer on `ref_paths` and evaluate `test_samples` with leakage assertion."""
-    from v3.core.bank import l2_normalize_np
-    from v3.core.defect.aggregate import aggregate_patch_map, topk_image_score
-
     ref_ids = [str(p.resolve()) for p in ref_paths]
     neg_ids = [str(s.image_path.resolve()) for s in test_samples if s.label == 0]
     assert_disjoint_references_and_negatives(ref_ids, neg_ids)
 
-    ref_feats = ref_feats_preloaded if ref_feats_preloaded is not None else [extractor.get_features(p) for p in ref_paths]
-    q_stack = (
-        q_norm_stack
-        if q_norm_stack is not None
-        else np.stack([l2_normalize_np(f.patch_tokens) for f in test_features], axis=0)
-    )
-    n_imgs, hp, wp, d = q_stack.shape
-
-    if scorer_name == "knn_global":
-        ref_bank = np.stack([l2_normalize_np(f.patch_tokens) for f in ref_feats], axis=0).reshape(-1, d)
-        q_flat = q_stack.reshape(-1, d)
-        n_q = q_flat.shape[0]
-        m = ref_bank.shape[0]
-        max_sim = np.full(n_q, -1.0, dtype=np.float32)
-        q_step = 16 * hp * wp  # 25,600 rows per batch (~100 MB)
-        r_step = min(chunk_size, 2048)
-        for q0 in range(0, n_q, q_step):
-            q_sub = q_flat[q0 : q0 + q_step]
-            sub_max = max_sim[q0 : q0 + q_step]
-            for r0 in range(0, m, r_step):
-                ref_chunk = ref_bank[r0 : r0 + r_step]
-                sims = q_sub @ ref_chunk.T
-                np.maximum(sub_max, np.max(sims, axis=1), out=sub_max)
-        raw_dist_all = (1.0 - max_sim).reshape(n_imgs, hp, wp).astype(np.float32)
-    elif scorer_name == "knn_positional":
-        ref_bank = np.stack([l2_normalize_np(f.patch_tokens) for f in ref_feats], axis=0)  # [K, hp, wp, d]
-        max_sim_grid = np.full((n_imgs, hp, wp), -1.0, dtype=np.float32)
-        rad = pos_radius
-        for dr in range(-rad, rad + 1):
-            r_q_start = max(0, -dr)
-            r_q_end = min(hp, hp - dr)
-            r_ref_start = r_q_start + dr
-            r_ref_end = r_q_end + dr
-            for dc in range(-rad, rad + 1):
-                c_q_start = max(0, -dc)
-                c_q_end = min(wp, wp - dc)
-                c_ref_start = c_q_start + dc
-                c_ref_end = c_q_end + dc
-                # q_sub: [h, w, N, D], ref_sub: [h, w, D, K]
-                q_sub = np.transpose(q_stack[:, r_q_start:r_q_end, c_q_start:c_q_end, :], (1, 2, 0, 3))
-                ref_sub = np.transpose(ref_bank[:, r_ref_start:r_ref_end, c_ref_start:c_ref_end, :], (1, 2, 3, 0))
-                sims = np.matmul(q_sub, ref_sub)  # [h, w, N, K]
-                best_n = np.transpose(np.max(sims, axis=-1), (2, 0, 1))  # [N, h, w]
-                max_sim_grid[:, r_q_start:r_q_end, c_q_start:c_q_end] = np.maximum(
-                    max_sim_grid[:, r_q_start:r_q_end, c_q_start:c_q_end],
-                    best_n,
-                )
-        raw_dist_all = (1.0 - max_sim_grid).astype(np.float32)
-    elif scorer_name == "pca_residual":
+    if scorer_name == "knn_global" and global_sim_cache is not None:
+        max_sim = np.max(np.stack([global_sim_cache[p] for p in ref_paths], axis=0), axis=0)
+        raw_dist_all = (1.0 - max_sim).astype(np.float32)
+    elif scorer_name == "knn_positional" and pos_sim_cache is not None:
+        max_sim = np.max(np.stack([pos_sim_cache[p] for p in ref_paths], axis=0), axis=0)
+        raw_dist_all = (1.0 - max_sim).astype(np.float32)
+    else:
+        ref_feats = (
+            ref_feats_preloaded
+            if ref_feats_preloaded is not None
+            else [extractor.get_features(p) for p in ref_paths]
+        )
+        q_stack = (
+            q_norm_stack
+            if q_norm_stack is not None
+            else np.stack([l2_normalize_np(f.patch_tokens) for f in test_features], axis=0)
+        )
+        n_imgs, hp, wp, d = q_stack.shape
         scorer = PCAResidualScorer(extractor=extractor, agg_radius=agg_radius, topk_frac=topk_frac)
         scorer.fit_features(ref_feats, reference_ids=ref_ids)
         assert scorer._mean is not None and scorer._components is not None
@@ -175,33 +267,20 @@ def evaluate_single_run(
             proj_sq = np.sum(coords * coords, axis=-1)
             res_flat[q0 : q0 + q_step] = np.maximum(total_sq - proj_sq, 0.0)
         raw_dist_all = res_flat.reshape(n_imgs, hp, wp)
-    else:
-        raise ValueError(f"Unknown scorer: {scorer_name}")
 
     labels = [s.label for s in test_samples]
-    img_scores: list[float] = []
-    heatmaps: list[np.ndarray] = []
-    masks: list[np.ndarray] = []
-
-    for i, (gt_mask, mh, mw) in enumerate(masks_and_dims):
-        smoothed = aggregate_patch_map(raw_dist_all[i], radius=agg_radius)
-        s_img = topk_image_score(smoothed, topk_frac=topk_frac)
-        img_scores.append(s_img)
-        heatmaps.append(upsample_patch_map(smoothed, (mh, mw)))
-        masks.append(gt_mask)
-
-    h_stack = np.stack(heatmaps)
-    m_stack = np.stack(masks)
-    return {
-        "image_auroc": image_auroc(labels, img_scores),
-        "pixel_auroc": pixel_auroc(h_stack, m_stack),
-        "pixel_aupro_005": pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05) if compute_aupro else 0.0,
-    }
+    return score_maps_to_metrics(
+        raw_dist_all=raw_dist_all,
+        labels=labels,
+        masks_and_dims=masks_and_dims,
+        m_stack_uniform=m_stack_uniform,
+        agg_radius=agg_radius,
+        topk_frac=topk_frac,
+        compute_aupro=compute_aupro,
+    )
 
 
 def main() -> int:
-    import gc
-
     args = parse_args()
     t0 = time.perf_counter()
     cfg = load_v3_config(args.config)
@@ -224,12 +303,11 @@ def main() -> int:
         )
         return 0
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log_path = cfg.logs_dir / "step3_fewshot.log"
     with StepLogger(log_path) as logger:
         try:
-            from v3.core.bank import l2_normalize_np
-
-            logger.info("=== Phase 3 Step B: Few-Shot DINO Evaluation on Cached Features ===")
+            logger.info(f"=== Phase 3 Step B: Few-Shot DINO Evaluation on Cached Features (device={device}) ===")
             val_cats, eval_cats, val_samples, eval_samples = create_v3_category_splits(
                 data_root=cfg.data_root,
                 manifest_dir=cfg.manifest_dir,
@@ -248,7 +326,6 @@ def main() -> int:
             )
 
             # 1. Select best (scorer, agg_radius) strictly on the 5 validation categories at k=4
-            # Outer loop over validation categories so only 1 category is in RAM at a time!
             logger.info(f"Selecting best (scorer, agg_radius) on 5 validation categories ({val_cats}) at k=4...")
             best_scorer = "knn_positional"
             best_agg = 1
@@ -264,9 +341,14 @@ def main() -> int:
                 q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
                 del c_feats
                 c_masks = load_category_masks(c_samples)
+                dims_set = {(mh, mw) for _, mh, mw in c_masks}
+                m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
+
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
                 refs = random.Random(0).sample(pool, min(4, len(pool)))
-                ref_feats = [extractor.get_features(p) for p in refs]
+                pool_map = {p: extractor.get_features(p) for p in refs}
+                g_cache, p_cache = precompute_per_ref_maps(q_norm, refs, pool_map, pos_radius, device)
+                ref_feats = [pool_map[p] for p in refs]
 
                 for sc_name in scorers:
                     for agg_r in agg_radii:
@@ -275,10 +357,12 @@ def main() -> int:
                             pos_radius=pos_radius, agg_radius=agg_r, topk_frac=topk_frac,
                             chunk_size=chunk_size, compute_aupro=False,
                             q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
+                            global_sim_cache=g_cache, pos_sim_cache=p_cache,
+                            m_stack_uniform=m_uniform,
                         )
                         val_scores_by_pair[(sc_name, agg_r)].append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
 
-                del q_norm, c_masks, ref_feats
+                del q_norm, c_masks, m_uniform, pool_map, g_cache, p_cache, ref_feats
                 gc.collect()
 
             for sc_name in scorers:
@@ -295,18 +379,30 @@ def main() -> int:
 
             # 2. Evaluate k in [1,2,4,8,16] x seeds [0,1,2] x 3 scorers on the 10 held-out categories
             csv_rows: list[dict] = []
-            last_log_t = time.perf_counter()
 
             for cat in eval_cats:
+                t_cat = time.perf_counter()
                 c_samples = [s for s in eval_samples if s.category == cat]
                 c_feats = [extractor.get_features(s.image_path) for s in c_samples]
                 q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
                 del c_feats
                 c_masks = load_category_masks(c_samples)
+                dims_set = {(mh, mw) for _, mh, mw in c_masks}
+                m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
+
                 n_norm = sum(1 for s in c_samples if s.label == 0)
                 n_anom = sum(1 for s in c_samples if s.label == 1)
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
-                pool_feats_map = {p: extractor.get_features(p) for p in pool}
+
+                # Collect unique references across all (k, seed) combinations
+                unique_refs_set: set[Path] = set()
+                for k in k_grid:
+                    for sd in seeds:
+                        unique_refs_set.update(random.Random(sd).sample(pool, min(k, len(pool))))
+                unique_refs = sorted(unique_refs_set)
+                pool_feats_map = {p: extractor.get_features(p) for p in unique_refs}
+
+                g_cache, p_cache = precompute_per_ref_maps(q_norm, unique_refs, pool_feats_map, pos_radius, device)
 
                 for sc_name in scorers:
                     for k in k_grid:
@@ -317,8 +413,10 @@ def main() -> int:
                             m = evaluate_single_run(
                                 sc_name, extractor, refs, c_samples, [], c_masks,
                                 pos_radius=pos_radius, agg_radius=best_agg, topk_frac=topk_frac,
-                                chunk_size=chunk_size, compute_aupro=(k == 4),
+                                chunk_size=chunk_size, compute_aupro=(k == 4 and sc_name == best_scorer),
                                 q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
+                                global_sim_cache=g_cache, pos_sim_cache=p_cache,
+                                m_stack_uniform=m_uniform,
                             )
                             seed_metrics.append(m)
 
@@ -340,18 +438,14 @@ def main() -> int:
                         }
                         csv_rows.append(row)
 
-                        now = time.perf_counter()
-                        if (now - last_log_t) >= 30.0:
-                            logger.info(
-                                f"  [PROGRESS] {cat} | {sc_name} | k={k} -> "
-                                f"Img={row['image_auroc_mean']:.4f}±{row['image_auroc_std']:.4f}, "
-                                f"Px={row['pixel_auroc_mean']:.4f}±{row['pixel_auroc_std']:.4f}"
-                            )
-                            last_log_t = now
-
-                del q_norm, c_masks, pool_feats_map
+                best_k16 = next(r for r in csv_rows if r["category"] == cat and r["scorer"] == best_scorer and r["k"] == 16)
+                del q_norm, c_masks, m_uniform, pool_feats_map, g_cache, p_cache
                 gc.collect()
-                logger.info(f"  Completed held-out category: {cat} ({len(c_samples)} images)")
+                logger.info(
+                    f"  Category [{cat:<12}] ({len(c_samples):3d} imgs) DONE in {time.perf_counter() - t_cat:.1f}s | "
+                    f"{best_scorer} k=16: Img={best_k16['image_auroc_mean']:.4f}±{best_k16['image_auroc_std']:.4f}, "
+                    f"Px={best_k16['pixel_auroc_mean']:.4f}±{best_k16['pixel_auroc_std']:.4f}"
+                )
 
             csv_path = cfg.results_dir / "phase_3_fewshot.csv"
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
