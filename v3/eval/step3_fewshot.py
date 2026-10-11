@@ -37,8 +37,12 @@ from v3.config import (
     load_v3_config,
     log_decision,
 )
-from v3.core.bank import CachedDINOFeatures, DINOFeatureExtractor, l2_normalize_np
-from v3.core.defect.aggregate import aggregate_patch_map, topk_image_score, upsample_patch_map
+from v3.core.bank import CachedDINOFeatures, DINOFeatureExtractor
+from v3.core.defect.aggregate import (
+    aggregate_patch_map,
+    topk_image_score,
+    upsample_patch_map,
+)
 from v3.core.defect.knn import GlobalKNNScorer
 from v3.core.defect.pca import PCAResidualScorer
 from v3.core.mismatch.positional_knn import PositionalKNNScorer
@@ -535,7 +539,7 @@ def main() -> int:
                 f"best_scorer={best_scorer}, best_agg={best_agg}",
             )
             return 0
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, AssertionError, MemoryError) as exc:
             elapsed = time.perf_counter() - t0
             logger.error(f"step3_fewshot failed: {type(exc).__name__}: {exc}")
             log_decision(cfg, "Phase 3 Step B (Few-Shot DINO Evaluation)", "FAIL", elapsed, str(exc))
