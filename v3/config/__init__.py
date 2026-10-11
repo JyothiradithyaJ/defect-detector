@@ -157,3 +157,18 @@ def log_decision(cfg: V3Config, step_name: str, status: str, seconds: float, det
     cfg.decisions_md.parent.mkdir(parents=True, exist_ok=True)
     with open(cfg.decisions_md, "a", encoding="utf-8") as f:
         f.write(line)
+
+
+def get_git_commit() -> str:
+    """Return short git SHA of current HEAD."""
+    import subprocess
+
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+

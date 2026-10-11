@@ -30,6 +30,7 @@ from v3.eval.splits import MVTEC_CATEGORIES, DatasetSample, discover_mvtec_sampl
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Step 3A: Build DINOv2 fp16 feature cache on D:\\defect_cache\\dino_features.")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Path to v3 YAML config.")
+    parser.add_argument("--batch-size", type=int, default=4, help="Batch size parameter for extraction.")
     parser.add_argument("--max-train-refs", type=int, default=32, help="Number of train/good normals per category to cache.")
     parser.add_argument("--dry-run", action="store_true", help="Estimate output cache size and exit without running.")
     return parser.parse_args()

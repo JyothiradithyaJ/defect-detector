@@ -125,3 +125,41 @@ def create_v3_category_splits(
     eval_heldout_samples = [s for s in all_samples if s.category in eval_categories]
 
     return val_categories, eval_categories, val_samples, eval_heldout_samples
+
+
+MVTEC_CATEGORIES: tuple[str, ...] = MVTEC_ALL_CATEGORIES
+
+
+def discover_mvtec_samples(
+    data_root: Path,
+    categories: Sequence[str] = MVTEC_ALL_CATEGORIES,
+) -> list[DatasetSample]:
+    """Discover test samples across specified MVTec categories directly from data_root."""
+    samples: list[DatasetSample] = []
+    exts = {".png", ".jpg", ".jpeg", ".bmp"}
+    for cat in categories:
+        test_dir = data_root / cat / "test"
+        gt_dir = data_root / cat / "ground_truth"
+        if not test_dir.is_dir():
+            continue
+        for defect_dir in sorted(p for p in test_dir.iterdir() if p.is_dir()):
+            defect_type = defect_dir.name
+            label = 0 if defect_type == "good" else 1
+            for img_path in sorted(p for p in defect_dir.iterdir() if p.suffix.lower() in exts):
+                mask_path: Path | None = None
+                if label == 1 and gt_dir.is_dir():
+                    cand = gt_dir / defect_type / f"{img_path.stem}_mask{img_path.suffix}"
+                    if cand.is_file():
+                        mask_path = cand
+                samples.append(
+                    DatasetSample(
+                        image_id=f"{cat}/{defect_type}/{img_path.name}",
+                        category=cat,
+                        defect_type=defect_type,
+                        label=label,
+                        image_path=img_path,
+                        mask_path=mask_path,
+                    )
+                )
+    return samples
+
