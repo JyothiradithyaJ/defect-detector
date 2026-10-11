@@ -27,7 +27,6 @@ if Path("D:/ml_cache/tmp").is_dir():
     os.environ["TMP"] = "D:/ml_cache/tmp"
 
 import numpy as np
-import open_clip
 import torch
 from PIL import Image
 from torch.nn import functional
@@ -104,6 +103,8 @@ class CLIPFeatureExtractor:
         precision: str = "fp32",
         cache_dir: Path = DEFAULT_CACHE_DIR,
     ) -> None:
+        import open_clip
+
         if backbone_id not in BACKBONE_SPECS:
             raise ValueError(f"Unknown backbone_id '{backbone_id}'. Available: {list(BACKBONE_SPECS.keys())}")
 

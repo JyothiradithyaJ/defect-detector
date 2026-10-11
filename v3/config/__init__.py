@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,13 +23,19 @@ class V3Config:
     raw: dict[str, Any]
     config_hash: str
     data_root: Path
+    visa_root: Path
+    loco_root: Path
+    apd_root: Path
     manifest_dir: Path
     cache_dir: Path
+    dino_cache_dir: Path
     results_dir: Path
     logs_dir: Path
     repo_results_dir: Path
     decisions_md: Path
     phase1_baseline_json: Path
+    frozen_settings_json: Path
+    recipes_dir: Path
     hf_home: Path
     torch_home: Path
     temp_dir: Path
@@ -39,6 +46,19 @@ def _resolve_path(path_str: str) -> Path:
     if p.is_absolute():
         return p
     return PROJECT_ROOT / p
+
+
+def get_git_commit() -> str:
+    """Return short git commit hash of HEAD."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+            timeout=5,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
 
 
 def load_v3_config(config_path: Path = DEFAULT_CONFIG_PATH) -> V3Config:
@@ -55,7 +75,6 @@ def load_v3_config(config_path: Path = DEFAULT_CONFIG_PATH) -> V3Config:
     torch_home = _resolve_path(paths.get("torch_home", "D:/ml_cache/torch"))
     temp_dir = _resolve_path(paths.get("temp_dir", "D:/ml_cache/tmp"))
 
-    # Set environment variables before any ML libraries initialize caches
     os.environ["HF_HOME"] = str(hf_home)
     os.environ["TORCH_HOME"] = str(torch_home)
     os.environ["TEMP"] = str(temp_dir)
@@ -71,8 +90,12 @@ def load_v3_config(config_path: Path = DEFAULT_CONFIG_PATH) -> V3Config:
         raw=raw,
         config_hash=config_hash,
         data_root=data_root_cfg,
+        visa_root=_resolve_path(paths.get("visa_root", "D:/data/visa")),
+        loco_root=_resolve_path(paths.get("loco_root", "D:/data/mvtec_loco")),
+        apd_root=_resolve_path(paths.get("apd_root", "D:/data/apd")),
         manifest_dir=_resolve_path(paths.get("manifest_dir", "data/manifests")),
         cache_dir=_resolve_path(paths.get("cache_dir", "D:/defect_cache/visual_embeddings")),
+        dino_cache_dir=_resolve_path(paths.get("dino_cache_dir", "D:/defect_cache/dino_features")),
         results_dir=_resolve_path(paths.get("results_dir", "D:/defect_cache/results")),
         logs_dir=_resolve_path(paths.get("logs_dir", "D:/defect_cache/logs")),
         repo_results_dir=_resolve_path(paths.get("repo_results_dir", "v3/docs/results")),
@@ -80,12 +103,15 @@ def load_v3_config(config_path: Path = DEFAULT_CONFIG_PATH) -> V3Config:
         phase1_baseline_json=_resolve_path(
             paths.get("phase1_baseline_json", "v3/docs/results/phase_1_logs/v3-category_results.json")
         ),
+        frozen_settings_json=_resolve_path(paths.get("frozen_settings_json", "v3/config/frozen_settings.json")),
+        recipes_dir=_resolve_path(paths.get("recipes_dir", "v3/config/recipes")),
         hf_home=hf_home,
         torch_home=torch_home,
         temp_dir=temp_dir,
     )
 
     cfg.cache_dir.mkdir(parents=True, exist_ok=True)
+    cfg.dino_cache_dir.mkdir(parents=True, exist_ok=True)
     cfg.results_dir.mkdir(parents=True, exist_ok=True)
     cfg.logs_dir.mkdir(parents=True, exist_ok=True)
     cfg.repo_results_dir.mkdir(parents=True, exist_ok=True)
