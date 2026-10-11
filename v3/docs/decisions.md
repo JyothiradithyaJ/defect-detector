@@ -76,3 +76,10 @@ CUDA kernel errors might be asynchronously reported at some other API call, so t
 For debugging consider passing CUDA_LAUNCH_BLOCKING=1
 Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
 )
+- **Step B (Baseline 6-Decimal Check)**: status=PASS, elapsed=0.05s (max_diff=0.000000)
+
+## 2026-10-11 — Write-Only Mode Overrides for Phases 3–6
+- **Decision (Session Override)**:
+  1. `BUILD_PROMPT.md` Sections 5–6 "run pytest and the gate before DONE" is replaced by: write the code and synthetic unit tests, run only `ruff check v3/`, `python -m py_compile`, and `pytest --collect-only` (60 s cap); all GPU/model/evaluation gates are executed by the user via `RUN_PHASES.md`.
+  2. `BUILD_PROMPT.md` Section 6 step 7 "stop after each phase" is replaced by: commit on stacked branches (`v3/phase-3-dino` -> `v3/phase-4-stage-a` -> `v3/phase-5-fusion` -> `v3/phase-6-apd`) and continue to the next phase, stopping only after Phase 6 or on a Section 8 condition.
+  3. All 12 Hard Rules of `BUILD_PROMPT.md` remain strictly in force.

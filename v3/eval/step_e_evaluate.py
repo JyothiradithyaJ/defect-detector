@@ -122,6 +122,8 @@ def run_local_weight_sweep(
     logger: StepLogger,
 ) -> tuple[dict, float, float]:
     """Sweep global/local fusion weights strictly on the 5 validation categories."""
+    from v3.eval.metrics import image_auroc
+
     val_cats = sorted({s.category for s in val_samples})
     sweep_out: dict[str, dict] = {}
     best_name = "fused_095"
@@ -139,8 +141,9 @@ def run_local_weight_sweep(
         cat_aurocs = {}
         for cat in val_cats:
             c_samples = [s for s in val_samples if s.category == cat]
-            res = evaluate_category(cat, c_samples, scorer)
-            cat_aurocs[cat] = res.image_auroc
+            logits = [scorer.score_sample(s, need_heatmap=False)[0] for s in c_samples]
+            labels = [s.label for s in c_samples]
+            cat_aurocs[cat] = image_auroc(labels, logits)
 
         macro_img = float(np.mean(list(cat_aurocs.values())))
         sweep_out[name] = {
