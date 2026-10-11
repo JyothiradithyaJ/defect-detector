@@ -83,3 +83,5 @@ Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
   1. `BUILD_PROMPT.md` Sections 5–6 "run pytest and the gate before DONE" is replaced by: write the code and synthetic unit tests, run only `ruff check v3/`, `python -m py_compile`, and `pytest --collect-only` (60 s cap); all GPU/model/evaluation gates are executed by the user via `RUN_PHASES.md`.
   2. `BUILD_PROMPT.md` Section 6 step 7 "stop after each phase" is replaced by: commit on stacked branches (`v3/phase-3-dino` -> `v3/phase-4-stage-a` -> `v3/phase-5-fusion` -> `v3/phase-6-apd`) and continue to the next phase, stopping only after Phase 6 or on a Section 8 condition.
   3. All 12 Hard Rules of `BUILD_PROMPT.md` remain strictly in force.
+- **Phase 3 DINOv2 Download & Check**: status=PASS, elapsed=289.24s (model=dinov2_vitl14_reg)
+- **Step E (Phase 2 Cached Evaluations & Reports)**: status=PASS, elapsed=773.29s (B32_Img=0.7639, L14_Img=0.8493)
