@@ -38,11 +38,7 @@ from v3.config import (
     log_decision,
 )
 from v3.core.bank import CachedDINOFeatures, DINOFeatureExtractor, l2_normalize_np
-from v3.core.defect.aggregate import (
-    aggregate_patch_map,
-    topk_image_score,
-    upsample_patch_map,
-)
+from v3.core.defect.aggregate import aggregate_patch_map, topk_image_score, upsample_patch_map
 from v3.core.defect.knn import GlobalKNNScorer
 from v3.core.defect.pca import PCAResidualScorer
 from v3.core.mismatch.positional_knn import PositionalKNNScorer
@@ -97,40 +93,60 @@ def load_category_masks(samples: list[DatasetSample], metric_max_side: int = 256
 
 
 @torch.inference_mode()
-def precompute_per_ref_maps(
-    q_stack: np.ndarray,
-    unique_refs: list[Path],
-    pool_feats_map: dict[Path, CachedDINOFeatures],
-    pos_radius: int,
+def load_normalized_query_tensor(
+    samples: list[DatasetSample],
+    extractor: DINOFeatureExtractor,
     device: torch.device,
-) -> tuple[dict[Path, np.ndarray], dict[Path, np.ndarray]]:
-    """Precompute per-reference-image max cosine similarity maps [N, H_p, W_p] for knn_global and knn_positional.
+) -> torch.Tensor:
+    """Stream cached test features one image at a time directly into a pre-allocated tensor on `device`.
 
-    Because max over references is associative:
-      max_{p in U_{r in S} R_r} <q, p> == max_{r in S} (max_{p in R_r} <q, p>)
-    precomputing per-reference similarity maps once per unique reference image is 100% mathematically
-    identical while eliminating redundant dot products across k in [1,2,4,8,16] and seeds [0,1,2].
+    Avoids creating multiple multi-GB numpy lists/stacks in CPU RAM (when C: pagefile is full).
+    Uses ~450 MB of GPU VRAM for 150 images in float16.
     """
-    n_imgs, hp, wp, d = q_stack.shape
-    q_t = torch.from_numpy(q_stack).to(device=device, dtype=torch.float32)
-    q_flat = q_t.reshape(-1, d)  # [N*H_p*W_p, D]
+    first = extractor.get_features(samples[0].image_path).patch_tokens
+    hp, wp, d = first.shape
+    dtype = torch.float16 if device.type == "cuda" else torch.float32
+    q_t = torch.empty((len(samples), hp, wp, d), dtype=dtype, device=device)
 
-    global_maps: dict[Path, np.ndarray] = {}
-    pos_maps: dict[Path, np.ndarray] = {}
+    for idx, s in enumerate(samples):
+        pt = first if idx == 0 else extractor.get_features(s.image_path).patch_tokens
+        t = torch.from_numpy(pt).to(device=device, dtype=torch.float32)
+        t = F.normalize(t, p=2, dim=-1)
+        q_t[idx].copy_(t.to(dtype=dtype))
+    return q_t
+
+
+@torch.inference_mode()
+def precompute_per_ref_maps_gpu(
+    q_t: torch.Tensor,
+    unique_refs: list[Path],
+    extractor: DINOFeatureExtractor,
+    pos_radius: int,
+) -> tuple[dict[Path, torch.Tensor], dict[Path, torch.Tensor], dict[Path, torch.Tensor]]:
+    """Precompute per-reference similarity maps [N, H_p, W_p] and normalized reference tensors on GPU."""
+    device = q_t.device
+    dtype = q_t.dtype
+    n_imgs, hp, wp, d = q_t.shape
+    q_flat = q_t.reshape(-1, d)
+
+    global_maps: dict[Path, torch.Tensor] = {}
+    pos_maps: dict[Path, torch.Tensor] = {}
+    ref_tensors: dict[Path, torch.Tensor] = {}
     rad = pos_radius
     q_step = 32 * hp * wp
 
     for ref_p in unique_refs:
-        ref_np = l2_normalize_np(pool_feats_map[ref_p].patch_tokens)  # [H_p, W_p, D]
-        ref_t = torch.from_numpy(ref_np).to(device=device, dtype=torch.float32)
-        ref_flat = ref_t.reshape(-1, d)  # [H_p*W_p, D]
+        pt = extractor.get_features(ref_p).patch_tokens
+        ref_t = F.normalize(torch.from_numpy(pt).to(device=device, dtype=torch.float32), p=2, dim=-1).to(dtype=dtype)
+        ref_tensors[ref_p] = ref_t
+        ref_flat = ref_t.reshape(-1, d)
 
         # 1. Global max similarity against single reference image
         g_max = torch.empty(q_flat.shape[0], dtype=torch.float32, device=device)
         for q0 in range(0, q_flat.shape[0], q_step):
             sims = q_flat[q0 : q0 + q_step] @ ref_flat.T
-            g_max[q0 : q0 + q_step] = sims.max(dim=1).values
-        global_maps[ref_p] = g_max.reshape(n_imgs, hp, wp).cpu().numpy()
+            g_max[q0 : q0 + q_step] = sims.max(dim=1).values.float()
+        global_maps[ref_p] = g_max.reshape(n_imgs, hp, wp)
 
         # 2. Positional window max similarity against single reference image
         p_max = torch.full((n_imgs, hp, wp), -1.0, dtype=torch.float32, device=device)
@@ -146,21 +162,65 @@ def precompute_per_ref_maps(
                 c_ref_end = c_q_end + dc
                 q_sub = q_t[:, r_q_start:r_q_end, c_q_start:c_q_end, :]
                 r_sub = ref_t[r_ref_start:r_ref_end, c_ref_start:c_ref_end, :].unsqueeze(0)
-                sim_shift = (q_sub * r_sub).sum(dim=-1)
+                sim_shift = (q_sub * r_sub).sum(dim=-1).float()
                 p_max[:, r_q_start:r_q_end, c_q_start:c_q_end] = torch.maximum(
                     p_max[:, r_q_start:r_q_end, c_q_start:c_q_end],
                     sim_shift,
                 )
-        pos_maps[ref_p] = p_max.cpu().numpy()
+        pos_maps[ref_p] = p_max
 
-    del q_t, q_flat
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
-    return global_maps, pos_maps
+    return global_maps, pos_maps, ref_tensors
 
 
-def score_maps_to_metrics(
-    raw_dist_all: np.ndarray,
+@torch.inference_mode()
+def compute_pca_raw_dist_gpu(
+    q_t: torch.Tensor,
+    refs: list[Path],
+    ref_tensors: dict[Path, torch.Tensor],
+    variance_retained: float = 0.95,
+    max_components: int = 128,
+) -> torch.Tensor:
+    """Fit PCA subspace on GPU in float32 and return raw residual energy map [N, H_p, W_p] on GPU."""
+    device = q_t.device
+    n_imgs, hp, wp, d = q_t.shape
+    flat = torch.stack([ref_tensors[p] for p in refs], dim=0).reshape(-1, d).float()
+
+    if flat.shape[0] > 8192:
+        rng = np.random.default_rng(42)
+        idx = torch.from_numpy(rng.choice(flat.shape[0], size=8192, replace=False)).to(device=device)
+        flat = flat[idx]
+
+    mean = flat.mean(dim=0, keepdim=True)
+    centered_ref = flat - mean
+    cov = centered_ref.T @ centered_ref
+    eigvals, eigvecs = torch.linalg.eigh(cov)
+    var = torch.clamp(eigvals.flip(0), min=0.0)
+    vecs = eigvecs.flip(1)
+    total_var = float(var.sum().item())
+    if total_var <= 1e-12:
+        k = 1
+    else:
+        cum_var = torch.cumsum(var, dim=0) / total_var
+        k = int(torch.searchsorted(cum_var, variance_retained).item()) + 1
+        k = max(1, min(k, max_components, vecs.shape[1]))
+
+    comps = vecs[:, :k]  # [D, K] float32
+    q_flat = q_t.reshape(-1, d)
+    n_q = q_flat.shape[0]
+    res_flat = torch.empty(n_q, dtype=torch.float32, device=device)
+    q_step = 32 * hp * wp
+    for q0 in range(0, n_q, q_step):
+        c_q = q_flat[q0 : q0 + q_step].float() - mean
+        coords = c_q @ comps
+        total_sq = (c_q * c_q).sum(dim=-1)
+        proj_sq = (coords * coords).sum(dim=-1)
+        res_flat[q0 : q0 + q_step] = torch.clamp(total_sq - proj_sq, min=0.0)
+    return res_flat.reshape(n_imgs, hp, wp)
+
+
+@torch.inference_mode()
+def score_gpu_maps_to_metrics(
+    raw_t: torch.Tensor,
     labels: list[int],
     masks_and_dims: list[tuple[np.ndarray, int, int]],
     m_stack_uniform: np.ndarray | None,
@@ -168,37 +228,36 @@ def score_maps_to_metrics(
     topk_frac: float,
     compute_aupro: bool,
 ) -> dict[str, float]:
-    """Smooth patch maps, compute top-k% image scores, upsample, and compute AUROC/AU-PRO."""
-    n_imgs, hp, wp = raw_dist_all.shape
+    """Smooth patch maps on GPU, upsample, and compute AUROC/AU-PRO."""
+    n_imgs, hp, wp = raw_t.shape
 
-    # Fast batched smoothing & upsampling when all category masks share (mh, mw)
     if m_stack_uniform is not None:
         mh, mw = m_stack_uniform.shape[1], m_stack_uniform.shape[2]
-        t_raw = torch.from_numpy(raw_dist_all).unsqueeze(1)  # [N, 1, hp, wp]
+        t_in = raw_t.unsqueeze(1)  # [N, 1, hp, wp]
         if agg_radius > 0:
-            # Exact match to aggregate_patch_map (edge-clamped box mean)
-            padded = F.pad(t_raw, (agg_radius, agg_radius, agg_radius, agg_radius), mode="replicate")
-            ksize = 2 * agg_radius + 1
-            t_smooth = F.avg_pool2d(padded, kernel_size=ksize, stride=1)
+            padded = F.pad(t_in, (agg_radius, agg_radius, agg_radius, agg_radius), mode="replicate")
+            t_smooth = F.avg_pool2d(padded, kernel_size=2 * agg_radius + 1, stride=1)
         else:
-            t_smooth = t_raw
+            t_smooth = t_in
 
         flat = t_smooth.reshape(n_imgs, -1)
         k_top = max(1, round(hp * wp * topk_frac))
-        img_scores = torch.topk(flat, k=k_top, dim=1).values.mean(dim=1).numpy().tolist()
+        img_scores = torch.topk(flat, k=k_top, dim=1).values.mean(dim=1).cpu().numpy().tolist()
 
         h_stack = (
             F.interpolate(t_smooth, size=(mh, mw), mode="bilinear", align_corners=False)
             .squeeze(1)
+            .cpu()
             .numpy()
         )
         m_stack = m_stack_uniform
     else:
+        raw_np = raw_t.cpu().numpy()
         img_scores = []
         heatmaps = []
         masks = []
         for i, (gt_mask, mh, mw) in enumerate(masks_and_dims):
-            smoothed = aggregate_patch_map(raw_dist_all[i], radius=agg_radius)
+            smoothed = aggregate_patch_map(raw_np[i], radius=agg_radius)
             img_scores.append(topk_image_score(smoothed, topk_frac=topk_frac))
             heatmaps.append(upsample_patch_map(smoothed, (mh, mw)))
             masks.append(gt_mask)
@@ -224,60 +283,41 @@ def evaluate_single_run(
     topk_frac: float,
     chunk_size: int,
     compute_aupro: bool = True,
-    q_norm_stack: np.ndarray | None = None,
-    ref_feats_preloaded: list[CachedDINOFeatures] | None = None,
-    global_sim_cache: dict[Path, np.ndarray] | None = None,
-    pos_sim_cache: dict[Path, np.ndarray] | None = None,
-    m_stack_uniform: np.ndarray | None = None,
 ) -> dict[str, float]:
-    """Fit scorer on `ref_paths` and evaluate `test_samples` with leakage assertion."""
+    """Compatibility entry point for single-run evaluation."""
     ref_ids = [str(p.resolve()) for p in ref_paths]
     neg_ids = [str(s.image_path.resolve()) for s in test_samples if s.label == 0]
     assert_disjoint_references_and_negatives(ref_ids, neg_ids)
 
-    if scorer_name == "knn_global" and global_sim_cache is not None:
-        max_sim = np.max(np.stack([global_sim_cache[p] for p in ref_paths], axis=0), axis=0)
-        raw_dist_all = (1.0 - max_sim).astype(np.float32)
-    elif scorer_name == "knn_positional" and pos_sim_cache is not None:
-        max_sim = np.max(np.stack([pos_sim_cache[p] for p in ref_paths], axis=0), axis=0)
-        raw_dist_all = (1.0 - max_sim).astype(np.float32)
-    else:
-        ref_feats = (
-            ref_feats_preloaded
-            if ref_feats_preloaded is not None
-            else [extractor.get_features(p) for p in ref_paths]
-        )
-        q_stack = (
-            q_norm_stack
-            if q_norm_stack is not None
-            else np.stack([l2_normalize_np(f.patch_tokens) for f in test_features], axis=0)
-        )
-        n_imgs, hp, wp, d = q_stack.shape
-        scorer = PCAResidualScorer(extractor=extractor, agg_radius=agg_radius, topk_frac=topk_frac)
-        scorer.fit_features(ref_feats, reference_ids=ref_ids)
-        assert scorer._mean is not None and scorer._components is not None
-        q_flat = q_stack.reshape(-1, d)
-        n_q = q_flat.shape[0]
-        res_flat = np.empty(n_q, dtype=np.float32)
-        q_step = 16 * hp * wp
-        for q0 in range(0, n_q, q_step):
-            centered = q_flat[q0 : q0 + q_step] - scorer._mean
-            coords = centered @ scorer._components
-            total_sq = np.sum(centered * centered, axis=-1)
-            proj_sq = np.sum(coords * coords, axis=-1)
-            res_flat[q0 : q0 + q_step] = np.maximum(total_sq - proj_sq, 0.0)
-        raw_dist_all = res_flat.reshape(n_imgs, hp, wp)
-
-    labels = [s.label for s in test_samples]
-    return score_maps_to_metrics(
-        raw_dist_all=raw_dist_all,
-        labels=labels,
-        masks_and_dims=masks_and_dims,
-        m_stack_uniform=m_stack_uniform,
+    ref_feats = [extractor.get_features(p) for p in ref_paths]
+    scorer = build_scorer(
+        scorer_name=scorer_name,
+        extractor=extractor,
+        radius=pos_radius,
         agg_radius=agg_radius,
         topk_frac=topk_frac,
-        compute_aupro=compute_aupro,
+        chunk_size=chunk_size,
     )
+    scorer.fit_features(ref_feats, reference_ids=ref_ids)
+
+    labels = [s.label for s in test_samples]
+    img_scores: list[float] = []
+    heatmaps: list[np.ndarray] = []
+    masks: list[np.ndarray] = []
+
+    for feat, (gt_mask, mh, mw) in zip(test_features, masks_and_dims, strict=True):
+        s_img, patch_map = scorer.score_patch_grid(feat.patch_tokens)
+        img_scores.append(s_img)
+        heatmaps.append(upsample_patch_map(patch_map, (mh, mw)))
+        masks.append(gt_mask)
+
+    h_stack = np.stack(heatmaps)
+    m_stack = np.stack(masks)
+    return {
+        "image_auroc": image_auroc(labels, img_scores),
+        "pixel_auroc": pixel_auroc(h_stack, m_stack),
+        "pixel_aupro_005": pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05) if compute_aupro else 0.0,
+    }
 
 
 def main() -> int:
@@ -292,7 +332,6 @@ def main() -> int:
     pos_radius = int(cfg.raw.get("match", {}).get("radius", 2))
     dino_cfg = cfg.raw.get("dino", {})
     topk_frac = float(dino_cfg.get("topk_frac", 0.001))
-    chunk_size = int(dino_cfg.get("chunk_size", 4096))
 
     if args.dry_run:
         total_runs = len(k_grid) * len(seeds) * len(scorers) * 10
@@ -337,32 +376,38 @@ def main() -> int:
 
             for cat in val_cats:
                 c_samples = [s for s in val_samples if s.category == cat]
-                c_feats = [extractor.get_features(s.image_path) for s in c_samples]
-                q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
-                del c_feats
+                labels = [s.label for s in c_samples]
+                q_t = load_normalized_query_tensor(c_samples, extractor, device)
                 c_masks = load_category_masks(c_samples)
                 dims_set = {(mh, mw) for _, mh, mw in c_masks}
                 m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
 
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
                 refs = random.Random(0).sample(pool, min(4, len(pool)))
-                pool_map = {p: extractor.get_features(p) for p in refs}
-                g_cache, p_cache = precompute_per_ref_maps(q_norm, refs, pool_map, pos_radius, device)
-                ref_feats = [pool_map[p] for p in refs]
+                ref_ids = [str(p.resolve()) for p in refs]
+                neg_ids = [str(s.image_path.resolve()) for s in c_samples if s.label == 0]
+                assert_disjoint_references_and_negatives(ref_ids, neg_ids)
+
+                g_cache, p_cache, ref_tensors = precompute_per_ref_maps_gpu(q_t, refs, extractor, pos_radius)
+                pca_raw = compute_pca_raw_dist_gpu(q_t, refs, ref_tensors)
 
                 for sc_name in scorers:
+                    if sc_name == "knn_global":
+                        raw_t = 1.0 - torch.stack([g_cache[p] for p in refs], dim=0).amax(dim=0)
+                    elif sc_name == "knn_positional":
+                        raw_t = 1.0 - torch.stack([p_cache[p] for p in refs], dim=0).amax(dim=0)
+                    else:
+                        raw_t = pca_raw
+
                     for agg_r in agg_radii:
-                        m = evaluate_single_run(
-                            sc_name, extractor, refs, c_samples, [], c_masks,
-                            pos_radius=pos_radius, agg_radius=agg_r, topk_frac=topk_frac,
-                            chunk_size=chunk_size, compute_aupro=False,
-                            q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
-                            global_sim_cache=g_cache, pos_sim_cache=p_cache,
-                            m_stack_uniform=m_uniform,
+                        m = score_gpu_maps_to_metrics(
+                            raw_t, labels, c_masks, m_uniform, agg_radius=agg_r, topk_frac=topk_frac, compute_aupro=False
                         )
                         val_scores_by_pair[(sc_name, agg_r)].append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
 
-                del q_norm, c_masks, m_uniform, pool_map, g_cache, p_cache, ref_feats
+                del q_t, c_masks, m_uniform, g_cache, p_cache, ref_tensors, pca_raw
+                if device.type == "cuda":
+                    torch.cuda.empty_cache()
                 gc.collect()
 
             for sc_name in scorers:
@@ -383,9 +428,8 @@ def main() -> int:
             for cat in eval_cats:
                 t_cat = time.perf_counter()
                 c_samples = [s for s in eval_samples if s.category == cat]
-                c_feats = [extractor.get_features(s.image_path) for s in c_samples]
-                q_norm = np.stack([l2_normalize_np(f.patch_tokens) for f in c_feats], axis=0)
-                del c_feats
+                labels = [s.label for s in c_samples]
+                q_t = load_normalized_query_tensor(c_samples, extractor, device)
                 c_masks = load_category_masks(c_samples)
                 dims_set = {(mh, mw) for _, mh, mw in c_masks}
                 m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
@@ -393,30 +437,38 @@ def main() -> int:
                 n_norm = sum(1 for s in c_samples if s.label == 0)
                 n_anom = sum(1 for s in c_samples if s.label == 1)
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
+                neg_ids = [str(s.image_path.resolve()) for s in c_samples if s.label == 0]
 
-                # Collect unique references across all (k, seed) combinations
                 unique_refs_set: set[Path] = set()
                 for k in k_grid:
                     for sd in seeds:
-                        unique_refs_set.update(random.Random(sd).sample(pool, min(k, len(pool))))
+                        refs = random.Random(sd).sample(pool, min(k, len(pool)))
+                        assert_disjoint_references_and_negatives([str(p.resolve()) for p in refs], neg_ids)
+                        unique_refs_set.update(refs)
                 unique_refs = sorted(unique_refs_set)
-                pool_feats_map = {p: extractor.get_features(p) for p in unique_refs}
 
-                g_cache, p_cache = precompute_per_ref_maps(q_norm, unique_refs, pool_feats_map, pos_radius, device)
+                g_cache, p_cache, ref_tensors = precompute_per_ref_maps_gpu(q_t, unique_refs, extractor, pos_radius)
 
                 for sc_name in scorers:
                     for k in k_grid:
                         seed_metrics: list[dict[str, float]] = []
                         for sd in seeds:
                             refs = random.Random(sd).sample(pool, min(k, len(pool)))
-                            ref_feats = [pool_feats_map[p] for p in refs]
-                            m = evaluate_single_run(
-                                sc_name, extractor, refs, c_samples, [], c_masks,
-                                pos_radius=pos_radius, agg_radius=best_agg, topk_frac=topk_frac,
-                                chunk_size=chunk_size, compute_aupro=(k == 4 and sc_name == best_scorer),
-                                q_norm_stack=q_norm, ref_feats_preloaded=ref_feats,
-                                global_sim_cache=g_cache, pos_sim_cache=p_cache,
-                                m_stack_uniform=m_uniform,
+                            if sc_name == "knn_global":
+                                raw_t = 1.0 - torch.stack([g_cache[p] for p in refs], dim=0).amax(dim=0)
+                            elif sc_name == "knn_positional":
+                                raw_t = 1.0 - torch.stack([p_cache[p] for p in refs], dim=0).amax(dim=0)
+                            else:
+                                raw_t = compute_pca_raw_dist_gpu(q_t, refs, ref_tensors)
+
+                            m = score_gpu_maps_to_metrics(
+                                raw_t,
+                                labels,
+                                c_masks,
+                                m_uniform,
+                                agg_radius=best_agg,
+                                topk_frac=topk_frac,
+                                compute_aupro=(k == 4 and sc_name == best_scorer),
                             )
                             seed_metrics.append(m)
 
@@ -439,7 +491,9 @@ def main() -> int:
                         csv_rows.append(row)
 
                 best_k16 = next(r for r in csv_rows if r["category"] == cat and r["scorer"] == best_scorer and r["k"] == 16)
-                del q_norm, c_masks, m_uniform, pool_feats_map, g_cache, p_cache
+                del q_t, c_masks, m_uniform, g_cache, p_cache, ref_tensors
+                if device.type == "cuda":
+                    torch.cuda.empty_cache()
                 gc.collect()
                 logger.info(
                     f"  Category [{cat:<12}] ({len(c_samples):3d} imgs) DONE in {time.perf_counter() - t_cat:.1f}s | "
@@ -481,9 +535,9 @@ def main() -> int:
                 f"best_scorer={best_scorer}, best_agg={best_agg}",
             )
             return 0
-        except (RuntimeError, OSError, ValueError, KeyError, AssertionError) as exc:
+        except Exception as exc:
             elapsed = time.perf_counter() - t0
-            logger.error(f"step3_fewshot failed: {exc}")
+            logger.error(f"step3_fewshot failed: {type(exc).__name__}: {exc}")
             log_decision(cfg, "Phase 3 Step B (Few-Shot DINO Evaluation)", "FAIL", elapsed, str(exc))
             return 1
 
