@@ -38,7 +38,7 @@ Configured in `v3/config/default.yaml`:
 - `D:\data\mvtec_ad` — MVTec AD dataset
 - `D:\data\visa` — VisA dataset (optional in Phase 3; script logs `VisA not found at D:/data/visa, skipping` if absent)
 - `D:\data\mvtec_loco` — MVTec LOCO AD dataset (required for Phase 4 Stage A evaluation)
-- `D:\data\apd` — Aeolus Parts Dataset (required for Phase 6; **Reminder**: verify APD license terms before commercial/public redistribution; never commit APD images to git)
+- `D:\data\apd` — Assembled Panel Dataset for EV charging stations (required for Phase 6; **Reminder**: verify APD license terms before commercial/public redistribution; never commit APD images to git)
 - `D:\defect_cache\visual_embeddings` — Phase 2 CLIP visual embeddings
 - `D:\defect_cache\dino_features` — Phase 3 DINOv2 patch & CLS caches
 - `D:\defect_cache\results` — All CSV/JSON/Markdown evaluation outputs

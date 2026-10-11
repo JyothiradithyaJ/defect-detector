@@ -1,6 +1,6 @@
 """Step 5B: Freeze pipeline hyperparameters into v3/config/frozen_settings.json + SHA-256.
 
-This is the mandatory freeze point before Phase 6 (APD EV body panel track).
+This is the mandatory freeze point before Phase 6 (APD — Assembled Panel Dataset for EV charging stations).
 Phase 6 (`step6_apd_protocol.py`) refuses to run unless `v3/config/frozen_settings.json`
 exists and matches `v3/config/frozen_settings.sha256`.
 """
