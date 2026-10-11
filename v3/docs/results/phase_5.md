@@ -1,41 +1,32 @@
-# PHASE 5: Fusion, Calibration, Decision & Report — STATUS: CODE COMPLETE (PENDING USER GATE RUN)
+# Phase 5 Results: Two-Stage Pipeline, Branch Comparison & Hyperparameter Freeze
 
-## Task List
-- [x] Implement `v3/core/fusion.py` (`RobustNormalizer` and `BranchFuser` weighted sum).
-- [x] Implement `v3/core/calibrate.py` (`LogisticCalibrator` fitted on labelled validation data; outputs called probabilities only after calibration; explicitly documented as "calibrated, not strictly zero-shot").
-- [x] Implement `v3/core/decide.py` implementing README section S4 (`RECAPTURE`, `REJECT`, `REWORK`, `PASS`) and disjoint normal quantile threshold $\tau$.
-- [x] Implement `v3/core/report.py` with `Result` contract validation and automatic commit/seed/config hash stamping on JSON and PNG outputs.
-- [x] Implement `v3/core/pipeline.py` (`TwoStagePipeline` wiring `S0` to `S5`).
-- [x] Implement `v3/eval/step5_compare.py`, `v3/eval/step5_freeze.py`, and `v3/eval/step5_memtest.py`.
-- [x] Implement unit tests in `v3/tests/test_phase5_pipeline.py` (S4 truth table, `Result` contract validation, determinism check).
+- **Commit**: `f16ef0f`
+- **Config Hash**: `a1d1c42e0c28`
+- **Frozen Settings SHA-256**: `153e12546c82333b863b255349e6d2644805b97fb1444a4676f47ea5da9dc70b`
+- **Calibration Status**: `calibrated, not strictly zero-shot` (`T=1.10119`, `bias=-1.14598`)
+- **Selected Fusion Weights (5 Validation Categories)**: `w_d=0.70`, `w_c=0.30`
+- **1920x1080 Memory & Determinism (`step5_memtest.py`)**: Peak VRAM = `628.4 MB` (< `7168 MB`), Deterministic = `True`
 
-## Built
-- [`v3/core/fusion.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/fusion.py), [`v3/core/calibrate.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/calibrate.py), [`v3/core/decide.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/decide.py), [`v3/core/report.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/report.py), [`v3/core/pipeline.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/pipeline.py).
-- [`v3/eval/step5_compare.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step5_compare.py), [`v3/eval/step5_freeze.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step5_freeze.py), [`v3/eval/step5_memtest.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step5_memtest.py).
+## 1. Macro Branch Comparison on 10 Held-Out Categories
 
-## Exact Reproduce Commands
-```powershell
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step5_compare
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step5_freeze
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step5_memtest
-```
+| Branch / Mode | Macro Image AUROC | Macro Pixel AUROC | Macro AU-PRO@0.05 |
+| :--- | :---: | :---: | :---: |
+| `CLIP-only (ViT-L/14@336)` | `0.8629` | — | — |
+| `DINO-only (knn_global, k=4)` | `0.9598` | — | — |
+| `Stage A-only (Global Presence ROI)` | `0.5349` | — | — |
+| **`Fused (Stage A + DINO + CLIP)`** | **`0.9658`** | **`0.9656`** | **`0.7362`** |
 
-## Reproducibility & Calibration Note
-- **Branch**: `v3/phase-5-fusion`
-- **Seeds**: `[0, 1, 2]`
-- **Calibration Convention**: Score-to-probability conversion uses logistic temperature/bias fitted on the 5 labelled validation categories (`calibrated, not strictly zero-shot`). Uncalibrated outputs are always referred to as anomaly scores, never probabilities.
-- **AU-PRO Normalisation Convention**: Integrated over $\text{FPR} \in [0, 0.05]$ and divided by $0.05$.
-- **Low-N Flag**: `toothbrush` ($N=42$) is marked `[LOW-N]`.
+## 2. Per-Category Results on 10 Held-Out Categories (`k=4`)
 
-## Gate to Check
-- Paste the contents of:
-  1. `D:\defect_cache\results\phase_5_summary.json` (CLIP-only vs DINO-only vs Stage A only vs Fused A+B macro & per-category metrics)
-  2. `v3/config/frozen_settings.json` and `v3/config/frozen_settings.sha256`
-  3. `D:\defect_cache\results\step5_memtest.json` (confirming $1920 \times 1080$ Peak VRAM $< 7.0\text{ GB}$ and determinism diff $= 0.0$).
-
-## Numbers
-- **Status**: `pending, run by user` (see `RUN_PHASES.md` Phase 5 section).
-
-## Open Issues
-- Freeze file `v3/config/frozen_settings.json` must be generated via `step5_freeze` before running Phase 6 (`step6_apd_protocol`).
-
+| Category | N (Norm/Anom) | CLIP Img AUROC | DINO Img AUROC | Stage A Img AUROC | Fused Img AUROC | Fused Px AUROC | Fused PRO@0.05 | Recall@5%FRR | ECE | Notes |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| `bottle` | 83 (20/63) | 0.9079 | 0.9952 | 0.4639 | **0.9984** | **0.9914** | 0.8067 | 1.0000 | 0.1047 |  |
+| `cable` | 150 (58/92) | 0.8160 | 0.9183 | 0.6668 | **0.9496** | **0.9194** | 0.6427 | 0.7935 | 0.2129 |  |
+| `capsule` | 132 (23/109) | 0.7467 | 0.9589 | 0.5523 | **0.9625** | **0.9797** | 0.7850 | 0.9083 | 0.2070 |  |
+| `grid` | 78 (21/57) | 0.9557 | 1.0000 | 0.3375 | **1.0000** | **0.9943** | 0.8423 | 1.0000 | 0.1648 |  |
+| `leather` | 124 (32/92) | 0.9990 | 1.0000 | 0.4883 | **1.0000** | **0.9844** | 0.8488 | 1.0000 | 0.0774 |  |
+| `pill` | 167 (26/141) | 0.7390 | 0.9482 | 0.6435 | **0.9438** | **0.9040** | 0.8082 | 0.8014 | 0.2190 |  |
+| `screw` | 160 (41/119) | 0.8918 | 0.7883 | 0.4048 | **0.8116** | **0.9765** | 0.6566 | 0.3109 | 0.4248 |  |
+| `tile` | 117 (33/84) | 0.9939 | 0.9996 | 0.5325 | **0.9996** | **0.9606** | 0.5262 | 1.0000 | 0.1516 |  |
+| `toothbrush` | 42 (12/30) | 0.7917 | 0.9917 | 0.7111 | **0.9944** | **0.9882** | 0.8023 | 0.9667 | 0.1344 | `[LOW-N]` |
+| `zipper` | 151 (32/119) | 0.7878 | 0.9976 | 0.5479 | **0.9976** | **0.9573** | 0.6430 | 0.9832 | 0.0639 |  |

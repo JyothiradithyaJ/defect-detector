@@ -40,13 +40,33 @@ def pixel_auroc(
     masks: list[np.ndarray] | np.ndarray,
 ) -> float:
     """Calculate pixel-level AUROC from anomaly maps and binary ground truth masks."""
-    scores = np.asarray(score_maps, dtype=np.float64)
+    scores = np.asarray(score_maps, dtype=np.float32)
     ground_truth = np.asarray(masks, dtype=bool)
 
     if scores.shape != ground_truth.shape:
         raise ValueError("score_maps and masks must have identical shapes.")
     if scores.ndim != 3:
         raise ValueError("score_maps and masks must have shape [N, H, W].")
+
+    if scores.size >= 100_000:
+        import torch
+
+        if torch.cuda.is_available():
+            gt_flat_np = ground_truth.reshape(-1)
+            n_pos = int(gt_flat_np.sum())
+            if 0 < n_pos < gt_flat_np.size:
+                device = torch.device("cuda")
+                s_flat = torch.from_numpy(np.ascontiguousarray(scores.reshape(-1))).to(device)
+                gt_flat = torch.from_numpy(np.ascontiguousarray(gt_flat_np)).to(device)
+                order = torch.argsort(s_flat, descending=True)
+                s_sorted = s_flat[order]
+                y_sorted = gt_flat[order].to(torch.float64)
+                tps = torch.cumsum(y_sorted, dim=0)
+                fps = torch.arange(1, len(y_sorted) + 1, device=device, dtype=torch.float64) - tps
+                keep = torch.cat([torch.diff(s_sorted) != 0, torch.ones(1, dtype=torch.bool, device=device)])
+                tps_k = torch.cat([torch.zeros(1, dtype=torch.float64, device=device), tps[keep]])
+                fps_k = torch.cat([torch.zeros(1, dtype=torch.float64, device=device), fps[keep]])
+                return float((torch.trapezoid(tps_k, fps_k) / (tps_k[-1] * fps_k[-1])).item())
 
     return image_auroc(ground_truth.reshape(-1), scores.reshape(-1))
 
@@ -181,6 +201,31 @@ def _aupro_curve(
         raise ValueError("AU-PRO requires at least one defective ground-truth region.")
     if normal_pixel_count == 0:
         raise ValueError("AU-PRO requires at least one normal pixel.")
+
+    if score_maps.size >= 100_000:
+        import torch
+
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            scores_flat_t = torch.from_numpy(np.ascontiguousarray(score_maps.reshape(-1), dtype=np.float32)).to(device)
+            fp_changes_t = torch.from_numpy(np.ascontiguousarray((~masks.astype(bool)).reshape(-1), dtype=np.uint8)).to(device)
+            pro_changes_np = np.zeros(score_maps.size, dtype=np.float32)
+            for image_index, region in all_regions:
+                offset = image_index * masks.shape[1] * masks.shape[2]
+                pro_changes_np[offset + region] = 1.0 / len(region)
+            pro_changes_t = torch.from_numpy(pro_changes_np).to(device)
+
+            order = torch.argsort(scores_flat_t, descending=True)
+            sorted_scores = scores_flat_t[order]
+            fprs_t = torch.cumsum(fp_changes_t[order].to(torch.float64), dim=0) / normal_pixel_count
+            pros_t = torch.cumsum(pro_changes_t[order].to(torch.float64), dim=0) / region_count
+            keep = torch.cat([torch.diff(sorted_scores) != 0, torch.ones(1, dtype=torch.bool, device=device)])
+            fprs = np.clip(fprs_t[keep].cpu().numpy(), 0.0, 1.0)
+            pros = np.clip(pros_t[keep].cpu().numpy(), 0.0, 1.0)
+            return (
+                np.concatenate(([0.0], fprs, [1.0])),
+                np.concatenate(([0.0], pros, [1.0])),
+            )
 
     scores_flat = score_maps.reshape(-1).astype(np.float64, copy=False)
     fp_changes = (~masks.astype(bool)).reshape(-1).astype(np.uint8)

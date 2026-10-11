@@ -36,6 +36,17 @@ class GlobalKNNScorer:
         self.chunk_size = int(chunk_size)
         self.bank = ReferenceBank()
         self._flat_bank: np.ndarray | None = None  # [M, D]
+        self._flat_bank_gpu: object | None = None
+
+    def _sync_gpu_bank(self) -> None:
+        self._flat_bank_gpu = None
+        if self._flat_bank is not None and self._flat_bank.shape[0] >= 1000:
+            import torch
+
+            if torch.cuda.is_available():
+                self._flat_bank_gpu = torch.from_numpy(np.ascontiguousarray(self._flat_bank)).to(
+                    device="cuda", dtype=torch.float16
+                )
 
     def fit_features(
         self,
@@ -48,6 +59,7 @@ class GlobalKNNScorer:
         assert self.bank.patch_bank is not None
         d = self.bank.patch_bank.shape[-1]
         self._flat_bank = self.bank.patch_bank.reshape(-1, d)
+        self._sync_gpu_bank()
 
     def fit(self, normals: list[Image], recipe: Recipe) -> None:
         """Fit memory bank on normal reference images per Scorer protocol."""
@@ -55,6 +67,7 @@ class GlobalKNNScorer:
         assert self.bank.patch_bank is not None
         d = self.bank.patch_bank.shape[-1]
         self._flat_bank = self.bank.patch_bank.reshape(-1, d)
+        self._sync_gpu_bank()
 
     def score_patch_grid(self, patch_tokens: np.ndarray) -> tuple[float, np.ndarray]:
         """Compute (image_score, patch_anomaly_map [H_p, W_p]) from query patch tokens [H_p, W_p, D]."""
@@ -64,14 +77,23 @@ class GlobalKNNScorer:
         q = l2_normalize_np(patch_tokens)
         hp, wp, d = q.shape
         q_flat = q.reshape(-1, d)  # [Q, D]
-        m = self._flat_bank.shape[0]
 
-        max_sim = np.full(q_flat.shape[0], -1.0, dtype=np.float32)
-        for start in range(0, m, self.chunk_size):
-            ref_chunk = self._flat_bank[start : start + self.chunk_size]  # [C, D]
-            sims = q_flat @ ref_chunk.T  # [Q, C]
-            chunk_max = np.max(sims, axis=1)
-            max_sim = np.maximum(max_sim, chunk_max)
+        if self._flat_bank_gpu is not None:
+            import torch
+
+            with torch.inference_mode():
+                bank_t: torch.Tensor = self._flat_bank_gpu  # type: ignore[assignment]
+                q_t = torch.from_numpy(np.ascontiguousarray(q_flat)).to(device=bank_t.device, dtype=bank_t.dtype)
+                sims = q_t @ bank_t.T
+                max_sim = sims.max(dim=1).values.float().cpu().numpy()
+        else:
+            m = self._flat_bank.shape[0]
+            max_sim = np.full(q_flat.shape[0], -1.0, dtype=np.float32)
+            for start in range(0, m, self.chunk_size):
+                ref_chunk = self._flat_bank[start : start + self.chunk_size]  # [C, D]
+                sims = q_flat @ ref_chunk.T  # [Q, C]
+                chunk_max = np.max(sims, axis=1)
+                max_sim = np.maximum(max_sim, chunk_max)
 
         raw_dist = (1.0 - max_sim).reshape(hp, wp).astype(np.float32)
         smoothed = aggregate_patch_map(raw_dist, radius=self.agg_radius)

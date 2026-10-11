@@ -99,6 +99,88 @@ def main() -> int:
             out_json = cfg.results_dir / "step3_vram.json"
             out_json.write_text(json.dumps({"status": "PASS", "scorers": stats}, indent=2), encoding="utf-8")
 
+            summary_path = cfg.results_dir / "phase_3_summary.json"
+            if summary_path.is_file():
+                summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+                summary_data["vram_and_latency"] = stats
+                summary_path.write_text(json.dumps(summary_data, indent=2), encoding="utf-8")
+                md_path = PROJECT_ROOT / "v3" / "docs" / "results" / "phase_3.md"
+                md_path.parent.mkdir(parents=True, exist_ok=True)
+                best_sc = summary_data["selected_scorer"]
+                best_agg = summary_data["selected_agg_radius"]
+                rows = summary_data["rows"]
+                lines = [
+                    "# Phase 3 Results: Few-Shot DINOv2 Reference Memory Bank",
+                    "",
+                    f"- **Commit**: `{summary_data.get('commit', 'unknown')}`",
+                    f"- **Config Hash**: `{summary_data.get('config_hash', 'unknown')}`",
+                    f"- **Selected on 5 Validation Categories (k=4)**: `scorer={best_sc}`, `agg_radius={best_agg}`",
+                    "- **AU-PRO Convention**: Integrated from FPR `0.0` to `0.05` and normalized by `0.05` (max score `1.0`).",
+                    "",
+                    "## 1. Validation Selection (5 Validation Categories at k=4)",
+                    "",
+                    "| Scorer | Aggregation Radius | Validation Combined AUROC |",
+                    "| :--- | :---: | :---: |",
+                ]
+                for v_row in summary_data.get("validation_selection", []):
+                    lines.append(
+                        f"| `{v_row['scorer']}` | `{v_row['agg_radius']}` | `{v_row['val_combined_auroc']:.4f}` |"
+                    )
+                lines.extend(
+                    [
+                        "",
+                        "## 2. Scorer Peak VRAM & Latency (`step3_vram.py`)",
+                        "",
+                        "| Scorer | Latency (s/image) | Peak VRAM (MB) |",
+                        "| :--- | :---: | :---: |",
+                    ]
+                )
+                for sc_n, sc_st in stats.items():
+                    lines.append(f"| `{sc_n}` | `{sc_st['seconds_per_image']:.5f}` | `{sc_st['peak_vram_mb']:.1f}` |")
+                lines.extend(
+                    [
+                        "",
+                        f"## 3. Held-Out Categories (10 Categories, Selected `{best_sc}` across k in [1,2,4,8,16])",
+                        "",
+                        "| Category | N (Norm/Anom) | k=1 Img / Px AUROC | k=2 Img / Px AUROC | k=4 Img / Px / PRO@0.05 | k=8 Img / Px AUROC | k=16 Img / Px AUROC | Notes |",
+                        "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |",
+                    ]
+                )
+                by_cat_k = {(r["category"], r["k"]): r for r in rows if r["scorer"] == best_sc}
+                held_cats = sorted({r["category"] for r in rows})
+                for hc in held_cats:
+                    r1 = by_cat_k[(hc, 1)]
+                    r2 = by_cat_k[(hc, 2)]
+                    r4 = by_cat_k[(hc, 4)]
+                    r8 = by_cat_k[(hc, 8)]
+                    r16 = by_cat_k[(hc, 16)]
+                    note = "`[LOW-N]`" if r4.get("is_low_n") else ""
+                    lines.append(
+                        f"| `{hc}` | {r4['images']} ({r4['normal']}/{r4['anomalous']}) | "
+                        f"{r1['image_auroc_mean']:.4f}±{r1['image_auroc_std']:.4f} / {r1['pixel_auroc_mean']:.4f} | "
+                        f"{r2['image_auroc_mean']:.4f}±{r2['image_auroc_std']:.4f} / {r2['pixel_auroc_mean']:.4f} | "
+                        f"{r4['image_auroc_mean']:.4f} / {r4['pixel_auroc_mean']:.4f} / {r4['pixel_aupro_005_mean']:.4f} | "
+                        f"{r8['image_auroc_mean']:.4f}±{r8['image_auroc_std']:.4f} / {r8['pixel_auroc_mean']:.4f} | "
+                        f"**{r16['image_auroc_mean']:.4f}±{r16['image_auroc_std']:.4f}** / **{r16['pixel_auroc_mean']:.4f}±{r16['pixel_auroc_std']:.4f}** | {note} |"
+                    )
+                lines.extend(
+                    [
+                        "",
+                        "## 4. Macro Summary across Scorers on 10 Held-Out Categories",
+                        "",
+                        "| Scorer | k | Macro Image AUROC | Macro Pixel AUROC |",
+                        "| :--- | :---: | :---: | :---: |",
+                    ]
+                )
+                for sc_n in scorers:
+                    for k_val in [1, 2, 4, 8, 16]:
+                        sub = [r for r in rows if r["scorer"] == sc_n and r["k"] == k_val]
+                        m_img = sum(r["image_auroc_mean"] for r in sub) / max(1, len(sub))
+                        m_px = sum(r["pixel_auroc_mean"] for r in sub) / max(1, len(sub))
+                        lines.append(f"| `{sc_n}` | `{k_val}` | `{m_img:.4f}` | `{m_px:.4f}` |")
+                md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                logger.info(f"Wrote Phase 3 Markdown report to {md_path}")
+
             elapsed = time.perf_counter() - t0
             logger.info(f"STEP 3C RESULT: PASS ({elapsed:.2f}s)")
             log_decision(cfg, "Phase 3 Step C (DINO Scorer VRAM & Timing)", "PASS", elapsed)

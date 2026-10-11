@@ -66,6 +66,7 @@ def compute_category_branch_outputs(
     topk_frac: float,
     chunk_size: int,
     min_mad: float,
+    need_maps: bool = True,
 ) -> dict:
     """Compute per-sample scores and maps for CLIP, DINO, and Stage A on a category."""
     ref_ids = [str(p.resolve()) for p in ref_paths]
@@ -83,62 +84,75 @@ def compute_category_branch_outputs(
     )
     dino_scorer.fit_features(ref_feats, reference_ids=ref_ids)
 
-    # Fit Stage A global presence ROI on reference normal images
-    ref_imgs = [Image.open(p).convert("RGB") for p in ref_paths]
-    w0, h0 = ref_imgs[0].size
-    cat_recipe = Recipe(
-        name=cat,
-        template_path=str(ref_paths[0]),
-        resolution=(w0, h0),
-        view="fixed",
-        symmetry="none",
-        stable_roi=[(0, 0), (w0, 0), (w0, h0), (0, h0)],
-        rois=[ROI(id="global_presence", kind="presence", polygon=[(0, 0), (w0, 0), (w0, h0), (0, h0)], severity=1, hard=False, params={})],
-    )
-    stage_a_engine = StageAROIEngine(min_mad=min_mad)
-    stage_a_engine.fit(ref_imgs, cat_recipe)
-    for im in ref_imgs:
-        im.close()
+    stage_a_engine: StageAROIEngine | None = None
+    cat_recipe: Recipe | None = None
+    w0, h0 = 256, 256
+    if need_maps:
+        ref_imgs = [Image.open(p).convert("RGB") for p in ref_paths]
+        w0, h0 = ref_imgs[0].size
+        cat_recipe = Recipe(
+            name=cat,
+            template_path=str(ref_paths[0]),
+            resolution=(w0, h0),
+            view="fixed",
+            symmetry="none",
+            stable_roi=[(0, 0), (w0, 0), (w0, h0), (0, h0)],
+            rois=[ROI(id="global_presence", kind="presence", polygon=[(0, 0), (w0, 0), (w0, h0), (0, h0)], severity=1, hard=False, params={})],
+        )
+        stage_a_engine = StageAROIEngine(min_mad=min_mad)
+        stage_a_engine.fit(ref_imgs, cat_recipe)
+        for im in ref_imgs:
+            im.close()
 
-    # Reference normal scores for robust normalization
-    ref_dino_scores = [dino_scorer.score_patch_grid(rf.patch_tokens)[0] for rf in ref_feats]
-    ref_clip_scores = [
-        clip_scorer.score_sample(DatasetSample(p, None, 0, cat, "ref"), need_heatmap=False)[0]
-        for p in ref_paths
-    ]
+    # Leave-one-out reference normal DINO scores so self-matching does not collapse MAD to 0
+    ref_dino_scores: list[float] = []
+    if len(ref_feats) > 1:
+        for i, rf in enumerate(ref_feats):
+            other_feats = [f for j, f in enumerate(ref_feats) if j != i]
+            loo_scorer = build_scorer(
+                scorer_name=scorer_name,
+                extractor=dino_ext,
+                radius=pos_radius,
+                agg_radius=agg_radius,
+                topk_frac=topk_frac,
+                chunk_size=chunk_size,
+            )
+            loo_scorer.fit_features(other_feats)
+            ref_dino_scores.append(loo_scorer.score_patch_grid(rf.patch_tokens)[0])
+    else:
+        ref_dino_scores = [dino_scorer.score_patch_grid(rf.patch_tokens)[0] for rf in ref_feats]
 
-    masks_and_dims = load_category_masks(samples, metric_max_side=256)
+    masks_and_dims = load_category_masks(samples, metric_max_side=256) if need_maps else [(np.zeros((1, 1), dtype=bool), 1, 1)] * len(samples)
     labels = [s.label for s in samples]
     clip_scores, dino_scores, stage_a_scores = [], [], []
     clip_maps, dino_maps, gt_masks = [], [], []
 
     for s, (gt_m, mh, mw) in zip(samples, masks_and_dims, strict=True):
-        c_logit, _, c_map, _ = clip_scorer.score_sample(s, metric_max_side=256, need_heatmap=True)
+        c_logit, _, c_map, _ = clip_scorer.score_sample(s, metric_max_side=256, need_heatmap=need_maps)
         d_feat = dino_ext.get_features(s.image_path)
         d_score, d_patch_map = dino_scorer.score_patch_grid(d_feat.patch_tokens)
-        d_map = upsample_patch_map(d_patch_map, (mh, mw))
-
-        with Image.open(s.image_path) as q_img:
-            _, z_dict = stage_a_engine.inspect(q_img.convert("RGB").resize((w0, h0)), cat_recipe)
-        a_score = float(z_dict.get("global_presence", 0.0))
-
         clip_scores.append(c_logit)
         dino_scores.append(d_score)
-        stage_a_scores.append(a_score)
-        clip_maps.append(c_map)
-        dino_maps.append(d_map)
-        gt_masks.append(gt_m)
+
+        if need_maps and stage_a_engine is not None and cat_recipe is not None:
+            d_map = upsample_patch_map(d_patch_map, (mh, mw))
+            with Image.open(s.image_path) as q_img:
+                _, z_dict = stage_a_engine.inspect(q_img.convert("RGB").resize((w0, h0)), cat_recipe)
+            a_score = float(z_dict.get("global_presence", 0.0))
+            stage_a_scores.append(a_score)
+            clip_maps.append(c_map)
+            dino_maps.append(d_map)
+            gt_masks.append(gt_m)
 
     return {
         "labels": labels,
         "ref_dino_scores": ref_dino_scores,
-        "ref_clip_scores": ref_clip_scores,
         "clip_scores": clip_scores,
         "dino_scores": dino_scores,
         "stage_a_scores": stage_a_scores,
-        "clip_maps": np.stack(clip_maps),
-        "dino_maps": np.stack(dino_maps),
-        "gt_masks": np.stack(gt_masks),
+        "clip_maps": np.stack(clip_maps) if need_maps else None,
+        "dino_maps": np.stack(dino_maps) if need_maps else None,
+        "gt_masks": np.stack(gt_masks) if need_maps else None,
     }
 
 
@@ -176,25 +190,68 @@ def main() -> int:
                 torch_home=cfg.torch_home,
                 lazy_load=True,
             )
-            clip_ext = CLIPFeatureExtractor(backbone_id="clip_l14_336", device="cpu", precision="fp16", cache_dir=cfg.cache_dir)
+            clip_ext = CLIPFeatureExtractor(
+                backbone_id="clip_l14_336", device="cpu", precision="fp16", cache_dir=cfg.cache_dir, lazy_load=True
+            )
             clip_scorer = Phase2Scorer(extractor=clip_ext, vocabulary_mode="domain_generic", polarity_mode="intermediate_inverted")
 
-            scorer_name = str(cfg.raw.get("match", {}).get("mode", "knn_positional"))
+            p3_summary_path = cfg.results_dir / "phase_3_summary.json"
+            if p3_summary_path.is_file():
+                p3_sum = json.loads(p3_summary_path.read_text(encoding="utf-8"))
+                scorer_name = str(p3_sum.get("selected_scorer", cfg.raw.get("match", {}).get("mode", "knn_positional")))
+                agg_radius = int(p3_sum.get("selected_agg_radius", cfg.raw.get("match", {}).get("agg_radii", [1, 3])[0]))
+            else:
+                scorer_name = str(cfg.raw.get("match", {}).get("mode", "knn_positional"))
+                agg_radius = int(cfg.raw.get("match", {}).get("agg_radii", [1, 3])[0])
             pos_radius = int(cfg.raw.get("match", {}).get("radius", 2))
-            agg_radius = int(cfg.raw.get("match", {}).get("agg_radii", [1, 3])[0])
             topk_frac = float(dino_cfg.get("topk_frac", 0.001))
             chunk_size = int(dino_cfg.get("chunk_size", 4096))
             min_mad = float(cfg.raw.get("decide", {}).get("min_mad", 1e-3))
             k_refs = int(cfg.raw.get("refs", {}).get("k", 4))
+            logger.info(f"Using DINO scorer={scorer_name}, agg_radius={agg_radius}, k={k_refs}")
 
             # 1. Validation category evaluation for fusion weight selection
+            val_cache_file = cfg.results_dir / "step5_val_cache.json"
             val_cache: dict[str, dict] = {}
-            for cat in val_cats:
-                c_samples = [s for s in val_samples if s.category == cat]
-                pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
-                refs = random.Random(0).sample(pool, min(k_refs, len(pool)))
-                val_cache[cat] = compute_category_branch_outputs(
-                    cat, c_samples, refs, dino_ext, clip_scorer, scorer_name, pos_radius, agg_radius, topk_frac, chunk_size, min_mad
+            val_normal_clip_scores: list[float] = []
+            if val_cache_file.is_file():
+                saved_vc = json.loads(val_cache_file.read_text(encoding="utf-8"))
+                val_cache = saved_vc["val_cache"]
+                val_normal_clip_scores = saved_vc["val_normal_clip_scores"]
+                logger.info(f"  Loaded cached validation branch scores from {val_cache_file}")
+            else:
+                for v_idx, cat in enumerate(val_cats, start=1):
+                    t_v = time.perf_counter()
+                    c_samples = [s for s in val_samples if s.category == cat]
+                    pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
+                    refs = random.Random(0).sample(pool, min(k_refs, len(pool)))
+                    vc = compute_category_branch_outputs(
+                        cat,
+                        c_samples,
+                        refs,
+                        dino_ext,
+                        clip_scorer,
+                        scorer_name,
+                        pos_radius,
+                        agg_radius,
+                        topk_frac,
+                        chunk_size,
+                        min_mad,
+                        need_maps=False,
+                    )
+                    val_cache[cat] = {
+                        "labels": vc["labels"],
+                        "ref_dino_scores": vc["ref_dino_scores"],
+                        "clip_scores": vc["clip_scores"],
+                        "dino_scores": vc["dino_scores"],
+                    }
+                    val_normal_clip_scores.extend(
+                        cs for cs, lbl in zip(vc["clip_scores"], vc["labels"], strict=True) if lbl == 0
+                    )
+                    logger.info(f"  [Val {v_idx}/{len(val_cats)}] {cat:<12} ({len(c_samples):3d} imgs) scored in {time.perf_counter() - t_v:.1f}s")
+                val_cache_file.write_text(
+                    json.dumps({"val_cache": val_cache, "val_normal_clip_scores": val_normal_clip_scores}),
+                    encoding="utf-8",
                 )
 
             best_wd, best_wc = 0.85, 0.15
@@ -204,7 +261,7 @@ def main() -> int:
                 for cat in val_cats:
                     vc = val_cache[cat]
                     fuser = BranchFuser(w_d=wd, w_c=wc, min_mad=min_mad)
-                    fuser.fit(vc["ref_dino_scores"], vc["ref_clip_scores"])
+                    fuser.fit(vc["ref_dino_scores"], val_normal_clip_scores)
                     fused_s = [fuser.fuse_score(ds, cs) for ds, cs in zip(vc["dino_scores"], vc["clip_scores"], strict=True)]
                     cat_aurocs.append(image_auroc(vc["labels"], fused_s))
                 m_auroc = float(np.mean(cat_aurocs))
@@ -221,7 +278,7 @@ def main() -> int:
             for cat in val_cats:
                 vc = val_cache[cat]
                 fuser = BranchFuser(w_d=best_wd, w_c=best_wc, min_mad=min_mad)
-                fuser.fit(vc["ref_dino_scores"], vc["ref_clip_scores"])
+                fuser.fit(vc["ref_dino_scores"], val_normal_clip_scores)
                 all_val_fused.extend(fuser.fuse_score(ds, cs) for ds, cs in zip(vc["dino_scores"], vc["clip_scores"], strict=True))
                 all_val_labels.extend(vc["labels"])
 
@@ -232,19 +289,31 @@ def main() -> int:
 
             # 2. Held-out evaluation across all 4 modes
             rows: list[dict] = []
-            for cat in eval_cats:
+            for e_idx, cat in enumerate(eval_cats, start=1):
+                t_c = time.perf_counter()
                 c_samples = [s for s in eval_samples if s.category == cat]
                 pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
                 refs = random.Random(0).sample(pool, min(k_refs, len(pool)))
                 ec = compute_category_branch_outputs(
-                    cat, c_samples, refs, dino_ext, clip_scorer, scorer_name, pos_radius, agg_radius, topk_frac, chunk_size, min_mad
+                    cat,
+                    c_samples,
+                    refs,
+                    dino_ext,
+                    clip_scorer,
+                    scorer_name,
+                    pos_radius,
+                    agg_radius,
+                    topk_frac,
+                    chunk_size,
+                    min_mad,
+                    need_maps=True,
                 )
 
                 fuser = BranchFuser(w_d=best_wd, w_c=best_wc, min_mad=min_mad)
-                fuser.fit(ec["ref_dino_scores"], ec["ref_clip_scores"])
+                fuser.fit(ec["ref_dino_scores"], val_normal_clip_scores)
                 fused_scores = [
-                    max(fuser.fuse_score(ds, cs), 0.25 * a_s)
-                    for ds, cs, a_s in zip(ec["dino_scores"], ec["clip_scores"], ec["stage_a_scores"], strict=True)
+                    fuser.fuse_score(ds, cs)
+                    for ds, cs in zip(ec["dino_scores"], ec["clip_scores"], strict=True)
                 ]
                 fused_maps = best_wd * ec["dino_maps"] + best_wc * ec["clip_maps"]
 

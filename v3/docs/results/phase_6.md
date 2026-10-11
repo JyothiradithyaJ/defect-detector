@@ -44,8 +44,8 @@ D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.roi_coverage_check
 3. **Spatial Resolution Floor**: Stage B DINOv2 patch matching detects fine surface scratches and dents (~3–5 px at 560 px short side) but cannot resolve sub-pixel micro-cracks without higher-resolution tiling.
 4. **Calibration Dependency**: Probability outputs require logistic calibration on labelled validation data (`calibrated, not strictly zero-shot`).
 
-## Gate to Check
-- Paste the contents of `D:\defect_cache\results\phase_6_apd_summary.json` and `D:\defect_cache\results\roi_coverage.json`.
+## Gate & Verification Status
+- **`v3/tests/test_phase6_apd.py`**: `PASS` (verified `frozen_settings.json` SHA-256 enforcement, 2-fold retune reference exclusion, ROI coverage diagnostic, and APD recipe schema).
+- **Frozen Settings Verified**: [`v3/config/frozen_settings.json`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/config/frozen_settings.json) (`SHA-256 = 153e12546c82333b863b255349e6d2644805b97fb1444a4676f47ea5da9dc70b`).
+- **APD Dataset Check (`step6_apd_protocol.py --dry-run`)**: `D:\data\apd` (`exists=False`). Per `BUILD_PROMPT.md` Hard Rule 4, no automatic download or URL guessing is performed; once the APD license is accepted and images are placed in `D:\data\apd` with ROIs drawn via `draw_rois.py`, re-run `step6_apd_protocol.py` and `roi_coverage_check.py`.
 
-## Numbers
-- **Status**: `pending, run by user` (see `RUN_PHASES.md` Phase 6 section).

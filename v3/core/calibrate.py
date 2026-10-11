@@ -66,4 +66,4 @@ class LogisticCalibrator:
 
     def evaluate_ece(self, scores: list[float], labels: list[int], num_bins: int = 10) -> float:
         probs = [self.predict_proba(x) for x in scores]
-        return expected_calibration_error(probs, labels, num_bins=num_bins)
+        return expected_calibration_error(probs, labels, bins=num_bins)

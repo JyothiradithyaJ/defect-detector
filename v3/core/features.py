@@ -102,7 +102,7 @@ class CLIPFeatureExtractor:
         device: str | None = None,
         precision: str = "fp32",
         cache_dir: Path = DEFAULT_CACHE_DIR,
-        lazy_load: bool = False,
+        lazy_load: bool = True,
     ) -> None:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"

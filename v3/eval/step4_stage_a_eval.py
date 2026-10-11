@@ -201,6 +201,28 @@ def main() -> int:
             out_json = cfg.results_dir / "phase_4_stage_a.json"
             out_json.write_text(json.dumps(out_payload, indent=2), encoding="utf-8")
 
+            md_path = PROJECT_ROOT / "v3" / "docs" / "results" / "phase_4.md"
+            md_path.parent.mkdir(parents=True, exist_ok=True)
+            md_lines = [
+                "# Phase 4 Results: Stage A (QC, Alignment & Recipe ROI Detectors)",
+                "",
+                f"- **Commit**: `{out_payload['commit']}`",
+                f"- **Config Hash**: `{out_payload['config_hash']}`",
+                f"- **Normal False-Reject Rate**: `{normal_frr:.4f}` (Target $\\le$ `{target_frr:.4f}`)",
+                f"- **Recipe YAML Immutability Check**: `PASS` (`{len(hashes_after)}` recipes verified unchanged by SHA-256)",
+                "",
+                "## Per-ROI-Kind Precision & Recall on Validation Perturbations",
+                "",
+                "| ROI Kind | Precision | Recall | TP | FP | FN |",
+                "| :--- | :---: | :---: | :---: | :---: | :---: |",
+            ]
+            for k, m in per_kind_metrics.items():
+                md_lines.append(
+                    f"| `{k}` | `{m['precision']:.4f}` | `{m['recall']:.4f}` | {m['tp']} | {m['fp']} | {m['fn']} |"
+                )
+            md_path.write_text("\n".join(md_lines) + "\n", encoding="utf-8")
+            logger.info(f"Wrote Phase 4 Markdown report to {md_path}")
+
             elapsed = time.perf_counter() - t0
             logger.info(f"STEP 4 RESULT: PASS ({elapsed:.2f}s) -> {out_json}")
             log_decision(cfg, "Phase 4 Stage A Standalone Eval", "PASS", elapsed, f"FRR={normal_frr:.4f}")

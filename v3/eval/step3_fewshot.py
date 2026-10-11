@@ -46,13 +46,26 @@ from v3.core.defect.aggregate import (
 from v3.core.defect.knn import GlobalKNNScorer
 from v3.core.defect.pca import PCAResidualScorer
 from v3.core.mismatch.positional_knn import PositionalKNNScorer
-from v3.eval.metrics import image_auroc, pixel_aupro, pixel_auroc
+from dataclasses import dataclass
+from v3.eval.metrics import _connected_regions, image_auroc, pixel_aupro, pixel_auroc
 from v3.eval.splits import (
     DatasetSample,
     assert_disjoint_references_and_negatives,
     create_v3_category_splits,
 )
 from v3.eval.step3_cache_dino import discover_train_normals
+
+
+@dataclass
+class PrecomputedMaskGPU:
+    """Precomputed ground-truth mask tensors and connected-region weights on GPU for a category."""
+
+    mh: int
+    mw: int
+    gt_flat: torch.Tensor
+    pro_flat: torch.Tensor | None
+    normal_pixel_count: float
+    region_count: int
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,19 +94,71 @@ def build_scorer(
 
 def load_category_masks(samples: list[DatasetSample], metric_max_side: int = 256) -> list[tuple[np.ndarray, int, int]]:
     """Preload ground-truth boolean masks and resized dimensions (mh, mw) for a category."""
+    w0, h0 = 0, 0
     out: list[tuple[np.ndarray, int, int]] = []
-    for s in samples:
-        with Image.open(s.image_path) as img:
-            w, h = img.size
-        scale = min(1.0, metric_max_side / max(w, h)) if metric_max_side > 0 else 1.0
-        mw, mh = max(1, round(w * scale)), max(1, round(h * scale))
+    for idx, s in enumerate(samples):
+        if idx == 0:
+            with Image.open(s.image_path) as img:
+                w0, h0 = img.size
         if s.label and s.mask_path and s.mask_path.is_file():
             with Image.open(s.mask_path) as mask:
+                w, h = mask.size
+                scale = min(1.0, metric_max_side / max(w, h)) if metric_max_side > 0 else 1.0
+                mw, mh = max(1, round(w * scale)), max(1, round(h * scale))
                 gt = np.asarray(mask.convert("L").resize((mw, mh), Image.Resampling.NEAREST), dtype=np.uint8) > 0
         else:
+            w, h = w0, h0
+            scale = min(1.0, metric_max_side / max(w, h)) if metric_max_side > 0 else 1.0
+            mw, mh = max(1, round(w * scale)), max(1, round(h * scale))
             gt = np.zeros((mh, mw), dtype=bool)
         out.append((gt, mh, mw))
     return out
+
+
+def build_precomputed_mask_gpu(
+    c_masks: list[tuple[np.ndarray, int, int]],
+    device: torch.device,
+    need_aupro: bool = True,
+) -> PrecomputedMaskGPU | None:
+    """Precompute flattened mask and connected-component PRO weights on GPU once per category."""
+    dims_set = {(mh, mw) for _, mh, mw in c_masks}
+    if len(dims_set) != 1:
+        return None
+    mh, mw = next(iter(dims_set))
+    m_stack = np.stack([gt for gt, _, _ in c_masks])
+    n_imgs = m_stack.shape[0]
+    gt_flat = torch.from_numpy(m_stack.reshape(-1)).to(device=device)
+    normal_pixel_count = float((~m_stack).sum())
+
+    pro_flat: torch.Tensor | None = None
+    region_count = 0
+    if need_aupro:
+        pro_changes_np = np.zeros(n_imgs * mh * mw, dtype=np.float32)
+        for idx, m in enumerate(m_stack):
+            regs = _connected_regions(m)
+            region_count += len(regs)
+            offset = idx * mh * mw
+            for r in regs:
+                pro_changes_np[offset + r] = 1.0 / len(r)
+        pro_flat = torch.from_numpy(pro_changes_np).to(device=device)
+
+    return PrecomputedMaskGPU(
+        mh=mh,
+        mw=mw,
+        gt_flat=gt_flat,
+        pro_flat=pro_flat,
+        normal_pixel_count=normal_pixel_count,
+        region_count=region_count,
+    )
+
+
+def _load_patch_tokens_raw(image_path: Path, extractor: DINOFeatureExtractor) -> np.ndarray:
+    """Fast load of cached patch_tokens without redundant CPU float32 normalization."""
+    cfile = extractor.cache_dir / f"{extractor.get_cache_key(image_path)}.npz"
+    if cfile.is_file():
+        with np.load(cfile) as data:
+            return data["patch_tokens"]
+    return extractor.get_features(image_path).patch_tokens
 
 
 @torch.inference_mode()
@@ -102,18 +167,14 @@ def load_normalized_query_tensor(
     extractor: DINOFeatureExtractor,
     device: torch.device,
 ) -> torch.Tensor:
-    """Stream cached test features one image at a time directly into a pre-allocated tensor on `device`.
-
-    Avoids creating multiple multi-GB numpy lists/stacks in CPU RAM (when C: pagefile is full).
-    Uses ~450 MB of GPU VRAM for 150 images in float16.
-    """
-    first = extractor.get_features(samples[0].image_path).patch_tokens
+    """Stream cached test features one image at a time directly into a pre-allocated tensor on `device`."""
+    first = _load_patch_tokens_raw(samples[0].image_path, extractor)
     hp, wp, d = first.shape
     dtype = torch.float16 if device.type == "cuda" else torch.float32
     q_t = torch.empty((len(samples), hp, wp, d), dtype=dtype, device=device)
 
     for idx, s in enumerate(samples):
-        pt = first if idx == 0 else extractor.get_features(s.image_path).patch_tokens
+        pt = first if idx == 0 else _load_patch_tokens_raw(s.image_path, extractor)
         t = torch.from_numpy(pt).to(device=device, dtype=torch.float32)
         t = F.normalize(t, p=2, dim=-1)
         q_t[idx].copy_(t.to(dtype=dtype))
@@ -140,7 +201,7 @@ def precompute_per_ref_maps_gpu(
     q_step = 32 * hp * wp
 
     for ref_p in unique_refs:
-        pt = extractor.get_features(ref_p).patch_tokens
+        pt = _load_patch_tokens_raw(ref_p, extractor)
         ref_t = F.normalize(torch.from_numpy(pt).to(device=device, dtype=torch.float32), p=2, dim=-1).to(dtype=dtype)
         ref_tensors[ref_p] = ref_t
         ref_flat = ref_t.reshape(-1, d)
@@ -159,7 +220,7 @@ def precompute_per_ref_maps_gpu(
             r_q_end = min(hp, hp - dr)
             r_ref_start = r_q_start + dr
             r_ref_end = r_q_end + dr
-            for dc in range(-rad, rad + 1):
+            for dc in range(-rad, dc_end := rad + 1):
                 c_q_start = max(0, -dc)
                 c_q_end = min(wp, wp - dc)
                 c_ref_start = c_q_start + dc
@@ -227,16 +288,18 @@ def score_gpu_maps_to_metrics(
     raw_t: torch.Tensor,
     labels: list[int],
     masks_and_dims: list[tuple[np.ndarray, int, int]],
-    m_stack_uniform: np.ndarray | None,
+    mask_gpu: PrecomputedMaskGPU | None,
     agg_radius: int,
     topk_frac: float,
     compute_aupro: bool,
+    max_fpr: float = 0.05,
 ) -> dict[str, float]:
-    """Smooth patch maps on GPU, upsample, and compute AUROC/AU-PRO."""
+    """Smooth patch maps on GPU, upsample on GPU, and compute exact AUROC/AU-PRO on GPU."""
     n_imgs, hp, wp = raw_t.shape
+    device = raw_t.device
 
-    if m_stack_uniform is not None:
-        mh, mw = m_stack_uniform.shape[1], m_stack_uniform.shape[2]
+    if mask_gpu is not None:
+        mh, mw = mask_gpu.mh, mask_gpu.mw
         t_in = raw_t.unsqueeze(1)  # [N, 1, hp, wp]
         if agg_radius > 0:
             padded = F.pad(t_in, (agg_radius, agg_radius, agg_radius, agg_radius), mode="replicate")
@@ -248,30 +311,63 @@ def score_gpu_maps_to_metrics(
         k_top = max(1, round(hp * wp * topk_frac))
         img_scores = torch.topk(flat, k=k_top, dim=1).values.mean(dim=1).cpu().numpy().tolist()
 
-        h_stack = (
-            F.interpolate(t_smooth, size=(mh, mw), mode="bilinear", align_corners=False)
-            .squeeze(1)
-            .cpu()
-            .numpy()
-        )
-        m_stack = m_stack_uniform
-    else:
-        raw_np = raw_t.cpu().numpy()
-        img_scores = []
-        heatmaps = []
-        masks = []
-        for i, (gt_mask, mh, mw) in enumerate(masks_and_dims):
-            smoothed = aggregate_patch_map(raw_np[i], radius=agg_radius)
-            img_scores.append(topk_image_score(smoothed, topk_frac=topk_frac))
-            heatmaps.append(upsample_patch_map(smoothed, (mh, mw)))
-            masks.append(gt_mask)
-        h_stack = np.stack(heatmaps)
-        m_stack = np.stack(masks)
+        s_flat = F.interpolate(t_smooth, size=(mh, mw), mode="bilinear", align_corners=False).reshape(-1)
+        order = torch.argsort(s_flat, descending=True)
+        s_sorted = s_flat[order]
+        y_sorted = mask_gpu.gt_flat[order].to(torch.float64)
 
+        tps = torch.cumsum(y_sorted, dim=0)
+        fps = torch.arange(1, len(y_sorted) + 1, device=device, dtype=torch.float64) - tps
+        keep = torch.cat([torch.diff(s_sorted) != 0, torch.ones(1, dtype=torch.bool, device=device)])
+        tps_k = torch.cat([torch.zeros(1, dtype=torch.float64, device=device), tps[keep]])
+        fps_k = torch.cat([torch.zeros(1, dtype=torch.float64, device=device), fps[keep]])
+        px_auc = float((torch.trapezoid(tps_k, fps_k) / (tps_k[-1] * fps_k[-1])).item())
+
+        px_pro = 0.0
+        if compute_aupro and mask_gpu.pro_flat is not None and mask_gpu.region_count > 0:
+            fprs_k = torch.cat([fps_k / mask_gpu.normal_pixel_count, torch.ones(1, dtype=torch.float64, device=device)])
+            pros = torch.cumsum(mask_gpu.pro_flat[order].to(torch.float64), dim=0) / mask_gpu.region_count
+            pros_k = torch.cat(
+                [
+                    torch.zeros(1, dtype=torch.float64, device=device),
+                    torch.clamp(pros[keep], 0.0, 1.0),
+                    torch.ones(1, dtype=torch.float64, device=device),
+                ]
+            )
+            idx_limit = min(len(fprs_k), int(torch.searchsorted(fprs_k, max_fpr).item()) + 2)
+            fpr_cpu = fprs_k[:idx_limit].cpu().numpy()
+            pro_cpu = pros_k[:idx_limit].cpu().numpy()
+            if max_fpr not in fpr_cpu:
+                ix = int(np.searchsorted(fpr_cpu, max_fpr))
+                l_f, r_f = fpr_cpu[ix - 1], fpr_cpu[ix]
+                l_p, r_p = pro_cpu[ix - 1], pro_cpu[ix]
+                interp = l_p + (r_p - l_p) * (max_fpr - l_f) / (r_f - l_f)
+                fpr_cpu = np.insert(fpr_cpu, ix, max_fpr)
+                pro_cpu = np.insert(pro_cpu, ix, interp)
+            valid = fpr_cpu <= max_fpr
+            px_pro = float(np.trapezoid(pro_cpu[valid], fpr_cpu[valid] / max_fpr))
+
+        return {
+            "image_auroc": image_auroc(labels, img_scores),
+            "pixel_auroc": px_auc,
+            "pixel_aupro_005": px_pro,
+        }
+
+    raw_np = raw_t.cpu().numpy()
+    img_scores = []
+    heatmaps = []
+    masks = []
+    for i, (gt_mask, mh, mw) in enumerate(masks_and_dims):
+        smoothed = aggregate_patch_map(raw_np[i], radius=agg_radius)
+        img_scores.append(topk_image_score(smoothed, topk_frac=topk_frac))
+        heatmaps.append(upsample_patch_map(smoothed, (mh, mw)))
+        masks.append(gt_mask)
+    h_stack = np.stack(heatmaps)
+    m_stack = np.stack(masks)
     return {
         "image_auroc": image_auroc(labels, img_scores),
         "pixel_auroc": pixel_auroc(h_stack, m_stack),
-        "pixel_aupro_005": pixel_aupro(h_stack, m_stack, max_false_positive_rate=0.05) if compute_aupro else 0.0,
+        "pixel_aupro_005": pixel_aupro(h_stack, m_stack, max_false_positive_rate=max_fpr) if compute_aupro else 0.0,
     }
 
 
@@ -370,73 +466,100 @@ def main() -> int:
 
             # 1. Select best (scorer, agg_radius) strictly on the 5 validation categories at k=4
             logger.info(f"Selecting best (scorer, agg_radius) on 5 validation categories ({val_cats}) at k=4...")
+            val_cache_path = cfg.results_dir / "step3_val_selection.json"
             best_scorer = "knn_positional"
             best_agg = 1
             best_val_score = -1.0
             val_selection_table: list[dict] = []
-            val_scores_by_pair: dict[tuple[str, int], list[float]] = {
-                (sc_name, agg_r): [] for sc_name in scorers for agg_r in agg_radii
-            }
 
-            for cat in val_cats:
-                c_samples = [s for s in val_samples if s.category == cat]
-                labels = [s.label for s in c_samples]
-                q_t = load_normalized_query_tensor(c_samples, extractor, device)
-                c_masks = load_category_masks(c_samples)
-                dims_set = {(mh, mw) for _, mh, mw in c_masks}
-                m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
+            if val_cache_path.is_file():
+                cached_val = json.loads(val_cache_path.read_text(encoding="utf-8"))
+                val_selection_table = cached_val["validation_selection"]
+                best_scorer = cached_val["selected_scorer"]
+                best_agg = int(cached_val["selected_agg_radius"])
+                for entry in val_selection_table:
+                    logger.info(
+                        f"  [Validation k=4 (cached)] scorer={entry['scorer']:<15} "
+                        f"agg_radius={entry['agg_radius']} -> Combined AUROC={entry['val_combined_auroc']:.4f}"
+                    )
+            else:
+                val_scores_by_pair: dict[tuple[str, int], list[float]] = {
+                    (sc_name, agg_r): [] for sc_name in scorers for agg_r in agg_radii
+                }
 
-                pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
-                refs = random.Random(0).sample(pool, min(4, len(pool)))
-                ref_ids = [str(p.resolve()) for p in refs]
-                neg_ids = [str(s.image_path.resolve()) for s in c_samples if s.label == 0]
-                assert_disjoint_references_and_negatives(ref_ids, neg_ids)
+                for v_idx, cat in enumerate(val_cats, start=1):
+                    t_v = time.perf_counter()
+                    c_samples = [s for s in val_samples if s.category == cat]
+                    labels = [s.label for s in c_samples]
+                    q_t = load_normalized_query_tensor(c_samples, extractor, device)
+                    c_masks = load_category_masks(c_samples)
+                    mask_gpu = build_precomputed_mask_gpu(c_masks, device, need_aupro=False)
 
-                g_cache, p_cache, ref_tensors = precompute_per_ref_maps_gpu(q_t, refs, extractor, pos_radius)
-                pca_raw = compute_pca_raw_dist_gpu(q_t, refs, ref_tensors)
+                    pool = discover_train_normals(cfg.data_root, cat, max_refs=32)
+                    refs = random.Random(0).sample(pool, min(4, len(pool)))
+                    ref_ids = [str(p.resolve()) for p in refs]
+                    neg_ids = [str(s.image_path.resolve()) for s in c_samples if s.label == 0]
+                    assert_disjoint_references_and_negatives(ref_ids, neg_ids)
+
+                    g_cache, p_cache, ref_tensors = precompute_per_ref_maps_gpu(q_t, refs, extractor, pos_radius)
+                    pca_raw = compute_pca_raw_dist_gpu(q_t, refs, ref_tensors)
+
+                    for sc_name in scorers:
+                        if sc_name == "knn_global":
+                            raw_t = 1.0 - torch.stack([g_cache[p] for p in refs], dim=0).amax(dim=0)
+                        elif sc_name == "knn_positional":
+                            raw_t = 1.0 - torch.stack([p_cache[p] for p in refs], dim=0).amax(dim=0)
+                        else:
+                            raw_t = pca_raw
+
+                        for agg_r in agg_radii:
+                            m = score_gpu_maps_to_metrics(
+                                raw_t, labels, c_masks, mask_gpu, agg_radius=agg_r, topk_frac=topk_frac, compute_aupro=False
+                            )
+                            val_scores_by_pair[(sc_name, agg_r)].append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
+
+                    del q_t, c_masks, mask_gpu, g_cache, p_cache, ref_tensors, pca_raw
+                    if device.type == "cuda":
+                        torch.cuda.empty_cache()
+                    gc.collect()
+                    logger.info(
+                        f"  [Val {v_idx}/{len(val_cats)}] {cat:<12} ({len(c_samples):3d} imgs) DONE in {time.perf_counter() - t_v:.1f}s"
+                    )
 
                 for sc_name in scorers:
-                    if sc_name == "knn_global":
-                        raw_t = 1.0 - torch.stack([g_cache[p] for p in refs], dim=0).amax(dim=0)
-                    elif sc_name == "knn_positional":
-                        raw_t = 1.0 - torch.stack([p_cache[p] for p in refs], dim=0).amax(dim=0)
-                    else:
-                        raw_t = pca_raw
-
                     for agg_r in agg_radii:
-                        m = score_gpu_maps_to_metrics(
-                            raw_t, labels, c_masks, m_uniform, agg_radius=agg_r, topk_frac=topk_frac, compute_aupro=False
-                        )
-                        val_scores_by_pair[(sc_name, agg_r)].append(0.5 * (m["image_auroc"] + m["pixel_auroc"]))
+                        mean_val = float(np.mean(val_scores_by_pair[(sc_name, agg_r)]))
+                        val_selection_table.append({"scorer": sc_name, "agg_radius": agg_r, "val_combined_auroc": mean_val})
+                        logger.info(f"  [Validation k=4] scorer={sc_name:<15} agg_radius={agg_r} -> Combined AUROC={mean_val:.4f}")
+                        if mean_val > best_val_score:
+                            best_val_score = mean_val
+                            best_scorer = sc_name
+                            best_agg = agg_r
 
-                del q_t, c_masks, m_uniform, g_cache, p_cache, ref_tensors, pca_raw
-                if device.type == "cuda":
-                    torch.cuda.empty_cache()
-                gc.collect()
-
-            for sc_name in scorers:
-                for agg_r in agg_radii:
-                    mean_val = float(np.mean(val_scores_by_pair[(sc_name, agg_r)]))
-                    val_selection_table.append({"scorer": sc_name, "agg_radius": agg_r, "val_combined_auroc": mean_val})
-                    logger.info(f"  [Validation k=4] scorer={sc_name:<15} agg_radius={agg_r} -> Combined AUROC={mean_val:.4f}")
-                    if mean_val > best_val_score:
-                        best_val_score = mean_val
-                        best_scorer = sc_name
-                        best_agg = agg_r
+                val_cache_path.write_text(
+                    json.dumps(
+                        {
+                            "selected_scorer": best_scorer,
+                            "selected_agg_radius": best_agg,
+                            "validation_selection": val_selection_table,
+                        },
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
 
             logger.info(f"Selected on validation categories: scorer={best_scorer}, agg_radius={best_agg}")
 
             # 2. Evaluate k in [1,2,4,8,16] x seeds [0,1,2] x 3 scorers on the 10 held-out categories
             csv_rows: list[dict] = []
 
-            for cat in eval_cats:
+            for e_idx, cat in enumerate(eval_cats, start=1):
                 t_cat = time.perf_counter()
                 c_samples = [s for s in eval_samples if s.category == cat]
                 labels = [s.label for s in c_samples]
                 q_t = load_normalized_query_tensor(c_samples, extractor, device)
                 c_masks = load_category_masks(c_samples)
-                dims_set = {(mh, mw) for _, mh, mw in c_masks}
-                m_uniform = np.stack([gt for gt, _, _ in c_masks]) if len(dims_set) == 1 else None
+                mask_gpu = build_precomputed_mask_gpu(c_masks, device, need_aupro=True)
 
                 n_norm = sum(1 for s in c_samples if s.label == 0)
                 n_anom = sum(1 for s in c_samples if s.label == 1)
@@ -469,7 +592,7 @@ def main() -> int:
                                 raw_t,
                                 labels,
                                 c_masks,
-                                m_uniform,
+                                mask_gpu,
                                 agg_radius=best_agg,
                                 topk_frac=topk_frac,
                                 compute_aupro=(k == 4 and sc_name == best_scorer),
@@ -495,12 +618,12 @@ def main() -> int:
                         csv_rows.append(row)
 
                 best_k16 = next(r for r in csv_rows if r["category"] == cat and r["scorer"] == best_scorer and r["k"] == 16)
-                del q_t, c_masks, m_uniform, g_cache, p_cache, ref_tensors
+                del q_t, c_masks, mask_gpu, g_cache, p_cache, ref_tensors
                 if device.type == "cuda":
                     torch.cuda.empty_cache()
                 gc.collect()
                 logger.info(
-                    f"  Category [{cat:<12}] ({len(c_samples):3d} imgs) DONE in {time.perf_counter() - t_cat:.1f}s | "
+                    f"  [Held-out {e_idx:2d}/{len(eval_cats)}] {cat:<12} ({len(c_samples):3d} imgs) DONE in {time.perf_counter() - t_cat:.1f}s | "
                     f"{best_scorer} k=16: Img={best_k16['image_auroc_mean']:.4f}±{best_k16['image_auroc_std']:.4f}, "
                     f"Px={best_k16['pixel_auroc_mean']:.4f}±{best_k16['pixel_auroc_std']:.4f}"
                 )

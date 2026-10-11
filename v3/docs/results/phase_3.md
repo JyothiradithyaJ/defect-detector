@@ -1,44 +1,60 @@
-# PHASE 3: DINOv2 Patch Memory Bank & Few-Shot Scoring — STATUS: CODE COMPLETE (PENDING USER GATE RUN)
+# Phase 3 Results: Few-Shot DINOv2 Reference Memory Bank
 
-## Task List
-- [x] Implement `v3/core/defect/aggregate.py` supporting `match.agg_radii` (`[1, 3]`) and top-$k$ patch scoring (`dino.topk_frac`).
-- [x] Implement `v3/core/bank.py` (`DINOFeatureExtractor` with `D:\defect_cache\dino_features` fp16 caching and `ReferenceBank` with photometric-only augmentation unless `recipe.symmetry` permits `flip`/`rot`).
-- [x] Implement `v3/core/defect/knn.py` (`GlobalKNNScorer`), `v3/core/mismatch/positional_knn.py` (`PositionalKNNScorer`), and `v3/core/defect/pca.py` (`PCAResidualScorer`) adhering to `v3.core.contracts.Scorer`.
-- [x] Implement `v3/eval/download_dino.py`, `v3/eval/step3_cache_dino.py`, `v3/eval/step3_fewshot.py`, and `v3/eval/step3_vram.py` with `--dry-run`, 30s progress logging, and skip-if-exists resumption.
-- [x] Implement synthetic unit tests in `v3/tests/test_defect_synthetic.py` (swap test, aggregation test, reference/negative disjointness test, thin low-contrast scratch test).
+- **Commit**: `f16ef0f`
+- **Config Hash**: `a1d1c42e0c28`
+- **Selected on 5 Validation Categories (k=4)**: `scorer=knn_global`, `agg_radius=1`
+- **AU-PRO Convention**: Integrated from FPR `0.0` to `0.05` and normalized by `0.05` (max score `1.0`).
 
-## Built
-- [`v3/core/bank.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/bank.py): `DINOFeatureExtractor` (`dinov2_vitl14_reg`, 560 px short side, $40 \times 40$ patch grid, 1024-D fp16 disk cache) and `ReferenceBank`.
-- [`v3/core/defect/knn.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/defect/knn.py): Chunked global patch k-NN scorer (`knn_global`).
-- [`v3/core/mismatch/positional_knn.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/mismatch/positional_knn.py): Windowed positional k-NN scorer (`knn_positional`, radius $r=2$).
-- [`v3/core/defect/pca.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/defect/pca.py): Subspace PCA residual scorer (`pca_residual`).
-- [`v3/core/defect/aggregate.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/core/defect/aggregate.py): Spatial neighbourhood smoothing (`agg_radii: [1, 3]`) and top-$k$ image scoring.
-- [`v3/eval/download_dino.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/download_dino.py), [`v3/eval/step3_cache_dino.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step3_cache_dino.py), [`v3/eval/step3_fewshot.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step3_fewshot.py), [`v3/eval/step3_vram.py`](file:///c:/Users/JYOTHIRADITHYA%20J/Downloads/defect-detector/v3/eval/step3_vram.py).
+## 1. Validation Selection (5 Validation Categories at k=4)
 
-## Exact Reproduce Commands
-```powershell
-Remove-Item Env:\HF_HUB_OFFLINE -ErrorAction SilentlyContinue
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.download_dino
-$env:HF_HUB_OFFLINE = "1"
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step3_cache_dino
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step3_fewshot
-D:\envs\anomaly_v3\Scripts\python.exe -u -m v3.eval.step3_vram
-```
+| Scorer | Aggregation Radius | Validation Combined AUROC |
+| :--- | :---: | :---: |
+| `knn_global` | `1` | `0.9751` |
+| `knn_global` | `3` | `0.9683` |
+| `knn_positional` | `1` | `0.9376` |
+| `knn_positional` | `3` | `0.9328` |
+| `pca_residual` | `1` | `0.9707` |
+| `pca_residual` | `3` | `0.9604` |
 
-## Reproducibility Stamp
-- **Branch**: `v3/phase-3-dino`
-- **Seeds**: `[0, 1, 2]`
-- **Config Path**: `v3/config/default.yaml`
-- **AU-PRO Normalisation Convention**: Per-region overlap recall integrated over $\text{FPR} \in [0, 0.05]$ via trapezoidal rule and divided by $0.05$.
-- **Low-N Flag**: `toothbrush` ($N=42$: 12 normal, 30 anomalous) flagged `[LOW-N]`.
-- **Fixed-View Note**: Positional patch matching (`knn_positional`) without Stage 1 (`S1`) geometric alignment is only meaningful for fixed-view categories where parts appear in consistent canonical coordinates; free-rotation categories (e.g. `screw`, `metal_nut`, `hazelnut`) require either `S1` alignment or `knn_global`.
+## 2. Scorer Peak VRAM & Latency (`step3_vram.py`)
 
-## Gate to Check
-- Paste the contents of `D:\defect_cache\results\phase_3_summary.json` (or macro Image AUROC, Pixel AUROC, and AU-PRO@0.05 at $k \in \{1, 2, 4, 8, 16\}$ across `knn_global`, `knn_positional`, `pca_residual`) and `D:\defect_cache\results\step3_vram.json`.
+| Scorer | Latency (s/image) | Peak VRAM (MB) |
+| :--- | :---: | :---: |
+| `knn_global` | `0.10604` | `581.4` |
+| `knn_positional` | `0.06305` | `581.4` |
+| `pca_residual` | `0.11806` | `581.4` |
 
-## Numbers
-- **Status**: `pending, run by user` (see `RUN_PHASES.md` Phase 3 section).
+## 3. Held-Out Categories (10 Categories, Selected `knn_global` across k in [1,2,4,8,16])
 
-## Open Issues
-- GPU cache build and few-shot sweep are deferred to manual execution via `RUN_PHASES.md`.
+| Category | N (Norm/Anom) | k=1 Img / Px AUROC | k=2 Img / Px AUROC | k=4 Img / Px / PRO@0.05 | k=8 Img / Px AUROC | k=16 Img / Px AUROC | Notes |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| `bottle` | 83 (20/63) | 0.9960±0.0017 / 0.9885 | 0.9918±0.0004 / 0.9891 | 0.9926 / 0.9910 / 0.8013 | 0.9950±0.0025 / 0.9916 | **1.0000±0.0000** / **0.9921±0.0001** |  |
+| `cable` | 150 (58/92) | 0.8784±0.0603 / 0.9122 | 0.9137±0.0298 / 0.9169 | 0.9390 / 0.9313 / 0.6670 | 0.9351±0.0070 / 0.9356 | **0.9491±0.0074** / **0.9465±0.0020** |  |
+| `capsule` | 132 (23/109) | 0.7930±0.1233 / 0.9738 | 0.8375±0.1320 / 0.9785 | 0.9571 / 0.9817 / 0.7785 | 0.9644±0.0092 / 0.9831 | **0.9656±0.0024** / **0.9839±0.0003** |  |
+| `grid` | 78 (21/57) | 1.0000±0.0000 / 0.9933 | 1.0000±0.0000 / 0.9938 | 1.0000 / 0.9941 / 0.8376 | 1.0000±0.0000 / 0.9943 | **1.0000±0.0000** / **0.9944±0.0000** |  |
+| `leather` | 124 (32/92) | 1.0000±0.0000 / 0.9879 | 1.0000±0.0000 / 0.9862 | 1.0000 / 0.9854 / 0.8489 | 1.0000±0.0000 / 0.9861 | **1.0000±0.0000** / **0.9887±0.0003** |  |
+| `pill` | 167 (26/141) | 0.9101±0.0465 / 0.9095 | 0.9201±0.0236 / 0.9211 | 0.9439 / 0.9241 / 0.8233 | 0.9486±0.0039 / 0.9307 | **0.9535±0.0037** / **0.9334±0.0016** |  |
+| `screw` | 160 (41/119) | 0.6810±0.0303 / 0.9555 | 0.7287±0.0091 / 0.9637 | 0.7841 / 0.9727 / 0.6251 | 0.8089±0.0163 / 0.9781 | **0.8269±0.0082** / **0.9809±0.0018** |  |
+| `tile` | 117 (33/84) | 0.9989±0.0003 / 0.9603 | 0.9994±0.0004 / 0.9598 | 0.9999 / 0.9603 / 0.5268 | 1.0000±0.0000 / 0.9615 | **1.0000±0.0000** / **0.9612±0.0004** |  |
+| `toothbrush` | 42 (12/30) | 0.9843±0.0065 / 0.9880 | 0.9806±0.0157 / 0.9866 | 0.9861 / 0.9870 / 0.7701 | 0.9963±0.0026 / 0.9901 | **0.9944±0.0000** / **0.9903±0.0002** | `[LOW-N]` |
+| `zipper` | 151 (32/119) | 0.9958±0.0029 / 0.9582 | 0.9973±0.0019 / 0.9628 | 0.9977 / 0.9625 / 0.6616 | 0.9973±0.0003 / 0.9631 | **0.9984±0.0004** / **0.9667±0.0009** |  |
 
+## 4. Macro Summary across Scorers on 10 Held-Out Categories
+
+| Scorer | k | Macro Image AUROC | Macro Pixel AUROC |
+| :--- | :---: | :---: | :---: |
+| `knn_global` | `1` | `0.9237` | `0.9627` |
+| `knn_global` | `2` | `0.9369` | `0.9659` |
+| `knn_global` | `4` | `0.9600` | `0.9690` |
+| `knn_global` | `8` | `0.9646` | `0.9714` |
+| `knn_global` | `16` | `0.9688` | `0.9738` |
+| `knn_positional` | `1` | `0.8841` | `0.9479` |
+| `knn_positional` | `2` | `0.8994` | `0.9555` |
+| `knn_positional` | `4` | `0.9236` | `0.9631` |
+| `knn_positional` | `8` | `0.9368` | `0.9678` |
+| `knn_positional` | `16` | `0.9468` | `0.9715` |
+| `pca_residual` | `1` | `0.9186` | `0.9640` |
+| `pca_residual` | `2` | `0.9312` | `0.9672` |
+| `pca_residual` | `4` | `0.9537` | `0.9711` |
+| `pca_residual` | `8` | `0.9606` | `0.9734` |
+| `pca_residual` | `16` | `0.9623` | `0.9753` |

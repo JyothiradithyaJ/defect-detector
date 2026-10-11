@@ -239,3 +239,4 @@ Get-Content "D:\defect_cache\logs\step6_apd_protocol.log" -Wait -Tail 20
   1. `pytest` summary for `v3/tests/`.
   2. Contents of `D:\defect_cache\results\phase_6_roi_coverage.json` and `D:\defect_cache\results\phase_6_apd_results.json`.
 - **On Failure**: Check `D:\defect_cache\logs\step6_apd_protocol.log` (verifies `v3/config/frozen_settings.json` exists and `apd_panel.yaml` has `status: frozen`).
+
