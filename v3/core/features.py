@@ -169,7 +169,7 @@ class CLIPFeatureExtractor:
             param_map = dict(model.named_parameters())
             buf_map = dict(model.named_buffers())
             with torch.no_grad(), safe_open(str(ckpt_path), framework="pt", device="cpu") as f:
-                for k in f.keys():
+                for k in f.keys():  # noqa: SIM118
                     if k.startswith("visual."):
                         continue
                     if k in param_map:

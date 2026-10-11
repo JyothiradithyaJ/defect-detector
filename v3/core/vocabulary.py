@@ -6,6 +6,7 @@ DOES NOT use or inspect ground-truth defect-type folder names from the test spli
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
