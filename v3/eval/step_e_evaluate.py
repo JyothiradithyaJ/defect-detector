@@ -65,6 +65,7 @@ FUSION_CANDIDATES: list[tuple[str, float, float]] = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Step E: Phase 2 cached evaluation and report generation.")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Path to v3 YAML config.")
+    parser.add_argument("--dry-run", action="store_true", help="Verify config and cache paths without running.")
     return parser.parse_args()
 
 
@@ -447,6 +448,12 @@ def main() -> int:
     with StepLogger(log_path) as logger:
         try:
             logger.info("=== STEP E: Phase 2 Evaluations on Cached Visual Embeddings ===")
+            if args.dry_run:
+                logger.info(
+                    f"[DRY-RUN] cache_dir={cfg.cache_dir} (exists={cfg.cache_dir.exists()}), "
+                    f"results_dir={cfg.results_dir}, phase1_json={cfg.phase1_baseline_json.is_file()}"
+                )
+                return 0
             if not cfg.phase1_baseline_json.is_file():
                 raise FileNotFoundError(f"Phase 1 baseline JSON not found: {cfg.phase1_baseline_json}")
             p1_data = json.loads(cfg.phase1_baseline_json.read_text(encoding="utf-8"))
