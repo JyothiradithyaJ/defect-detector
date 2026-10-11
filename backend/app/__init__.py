@@ -1,0 +1,1 @@
+"""Defect Detector backend application package."""

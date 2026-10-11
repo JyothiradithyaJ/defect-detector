@@ -1,0 +1,15 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.5.1
+torchvision==0.20.1
+open-clip-torch==3.3.0
+numpy==2.2.3
+Pillow==11.1.0
+scikit-learn==1.6.1
+
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+pydantic-settings==2.7.1
+sqlalchemy==2.0.38
+python-multipart==0.0.20
+pytest==8.3.4

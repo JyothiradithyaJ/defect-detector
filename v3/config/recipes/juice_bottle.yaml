@@ -1,0 +1,42 @@
+# MVTec LOCO Recipe: juice_bottle
+# Drafted strictly from MVTec LOCO dataset documentation and canonical normal layout.
+status: draft-needs-human-review
+name: juice_bottle
+template_path: D:/data/mvtec_loco/juice_bottle/train/good/000.png
+resolution: [800, 1600]
+view: fixed
+symmetry: flip
+stable_roi: [[200, 100], [600, 100], [600, 1500], [200, 1500]]
+rois:
+  - id: liquid_fill_level
+    kind: position
+    polygon: [[240, 320], [560, 320], [560, 560], [240, 560]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params: {}
+  - id: center_fruit_icon_label
+    kind: presence
+    polygon: [[250, 650], [550, 650], [550, 1020], [250, 1020]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_label: "fruit_icon_matching_juice_color"
+  - id: bottom_100pct_text_label
+    kind: presence
+    polygon: [[250, 1060], [550, 1060], [550, 1320], [250, 1320]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params: {}
+  - id: label_vertical_order
+    kind: order
+    polygon: [[250, 650], [550, 650], [550, 1320], [250, 1320]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params:
+      num_slots: 2
+      order_axis: vertical
+

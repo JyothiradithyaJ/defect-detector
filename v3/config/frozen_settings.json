@@ -1,0 +1,29 @@
+{
+  "agg_radius": 1,
+  "augment_mode": "photometric_only",
+  "calibration": {
+    "bias": -1.145977021713185,
+    "status": "calibrated, not strictly zero-shot",
+    "temperature": 1.1011927618350483
+  },
+  "clip_backbone": "ViT-L-14-336",
+  "clip_input_size": 336,
+  "commit_hash": "f16ef0f",
+  "config_hash": "a1d1c42e0c28",
+  "dino_backbone": "dinov2_vitl14_reg",
+  "dino_short_side": 560,
+  "dino_topk_frac": 0.001,
+  "freeze_version": "v3-phase-5-gate",
+  "fusion_weights": {
+    "w_c": 0.3,
+    "w_d": 0.7
+  },
+  "positional_radius": 2,
+  "refs_k": 4,
+  "scorer": "knn_global",
+  "tau_rule": {
+    "false_reject_rate": 0.05,
+    "method": "quantile_on_disjoint_validation_normals",
+    "min_mad": 0.001
+  }
+}

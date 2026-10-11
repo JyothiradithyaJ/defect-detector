@@ -1,0 +1,38 @@
+# MVTec LOCO Recipe: pushpins
+# Drafted strictly from MVTec LOCO dataset documentation (15 compartments, 1 pushpin per compartment).
+status: draft-needs-human-review
+name: pushpins
+template_path: D:/data/mvtec_loco/pushpins/train/good/000.png
+resolution: [1700, 1000]
+view: fixed
+symmetry: none
+stable_roi: [[100, 100], [1600, 100], [1600, 900], [100, 900]]
+rois:
+  - id: top_row_compartments
+    kind: count
+    polygon: [[120, 120], [1580, 120], [1580, 380], [120, 380]]
+    severity: 1
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_count: 5
+      min_blob_pixels: 25
+  - id: middle_row_compartments
+    kind: count
+    polygon: [[120, 380], [1580, 380], [1580, 640], [120, 640]]
+    severity: 1
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_count: 5
+      min_blob_pixels: 25
+  - id: bottom_row_compartments
+    kind: count
+    polygon: [[120, 640], [1580, 640], [1580, 880], [120, 880]]
+    severity: 1
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_count: 5
+      min_blob_pixels: 25
+
