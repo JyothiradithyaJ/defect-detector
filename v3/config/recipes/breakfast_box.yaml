@@ -1,0 +1,43 @@
+# MVTec LOCO Recipe: breakfast_box
+# Drafted strictly from MVTec LOCO dataset documentation and canonical normal layout.
+status: draft-needs-human-review
+name: breakfast_box
+template_path: D:/data/mvtec_loco/breakfast_box/train/good/000.png
+resolution: [1600, 1280]
+view: fixed
+symmetry: none
+stable_roi: [[120, 80], [1480, 80], [1480, 1200], [120, 1200]]
+rois:
+  - id: left_fruit_compartment
+    kind: presence
+    polygon: [[180, 140], [740, 140], [740, 1140], [180, 1140]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params:
+      expected_contents: "two tangerines and one peach above banana/nectarine"
+  - id: left_fruit_order
+    kind: order
+    polygon: [[180, 140], [740, 140], [740, 1140], [180, 1140]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params:
+      num_slots: 2
+      order_axis: vertical
+  - id: right_cereals_compartment
+    kind: presence
+    polygon: [[820, 140], [1420, 140], [1420, 1140], [820, 1140]]
+    severity: 1
+    hard: false
+    z_threshold: 3.5
+    params:
+      expected_fill_ratio: 0.85
+  - id: right_cereals_position
+    kind: position
+    polygon: [[820, 140], [1420, 140], [1420, 1140], [820, 1140]]
+    severity: 2
+    hard: false
+    z_threshold: 3.5
+    params: {}
+

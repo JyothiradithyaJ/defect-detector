@@ -1,0 +1,43 @@
+# MVTec LOCO Recipe: splicing_connectors
+# Drafted strictly from MVTec LOCO dataset documentation (two symmetric connectors linked by one cable in matching port index).
+status: draft-needs-human-review
+name: splicing_connectors
+template_path: D:/data/mvtec_loco/splicing_connectors/train/good/000.png
+resolution: [1700, 850]
+view: fixed
+symmetry: flip
+stable_roi: [[100, 100], [1600, 100], [1600, 750], [100, 750]]
+rois:
+  - id: left_connector_clamp
+    kind: presence
+    polygon: [[140, 180], [520, 180], [520, 670], [140, 670]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params: {}
+  - id: right_connector_clamp
+    kind: presence
+    polygon: [[1180, 180], [1560, 180], [1560, 670], [1180, 670]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params: {}
+  - id: central_wire_link_order
+    kind: order
+    polygon: [[480, 200], [1220, 200], [1220, 650], [480, 650]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params:
+      num_slots: 2
+      order_axis: vertical
+  - id: central_wire_count
+    kind: count
+    polygon: [[520, 200], [1180, 200], [1180, 650], [520, 650]]
+    severity: 0
+    hard: true
+    z_threshold: 3.5
+    params:
+      expected_count: 1
+      min_blob_pixels: 50
+

@@ -1,0 +1,88 @@
+# Recipe skeleton for APD (Assembled Panel Dataset for EV charging stations) per README_v3.md sections 2.5, 6, and 8.3.
+# Concrete polygon coordinates and expected parameters must be drawn on the
+# golden template by the human reviewer via `python -m v3.eval.draw_rois`.
+# No polygon coordinates or parameters may be guessed from test images.
+status: needs-human-roi-drawing
+name: apd_panel
+template_path: D:/data/apd/normal/golden_template.png
+resolution: [1920, 1080]
+view: fixed
+symmetry: none
+stable_roi: []
+
+# README 2.5 Category-to-Stage Mapping and Severity Taxonomy
+category_mapping:
+  wrong_cable_order:
+    primary_stage: stage_a
+    roi_kind: order
+    severity: 1
+    hard: false
+  missing_wire:
+    primary_stage: stage_a
+    roi_kind: count
+    severity: 1
+    hard: false
+  missing_cap:
+    primary_stage: stage_a
+    roi_kind: presence
+    severity: 2
+    hard: false
+  misplaced_component:
+    primary_stage: stage_a
+    roi_kind: position
+    severity: 1
+    hard: false
+  pcb_surface_damage:
+    primary_stage: stage_b
+    roi_kind: surface
+    severity: 0
+    hard: true
+  panel_scratch_dent:
+    primary_stage: stage_b
+    roi_kind: surface
+    severity: 2
+    hard: false
+
+# Published Reference Points (README 2.3) - Note: evaluated at 224 px input resolution in original paper
+published_reference_points:
+  note: "[Published] Reference numbers from APD benchmark paper (evaluated at 224 px input resolution; not re-implemented)."
+  patchcore_224px:
+    image_auroc: 0.785
+    pixel_aupro: 0.642
+  efficientad_224px:
+    image_auroc: 0.761
+    pixel_aupro: 0.618
+  winclip_224px:
+    image_auroc: 0.712
+    pixel_aupro: 0.534
+
+rois:
+  - id: ev_port_left_cables
+    kind: order
+    polygon: []
+    severity: 1
+    hard: false
+    params:
+      axis: y
+      expected_sequence: []
+  - id: sensor_right_wires
+    kind: count
+    polygon: []
+    severity: 1
+    hard: false
+    params:
+      expected_count: null
+  - id: red_cap_left
+    kind: presence
+    polygon: []
+    severity: 2
+    hard: false
+    params:
+      target: placeholder_cap
+      area_ratio_range: null
+  - id: pcb_left
+    kind: surface
+    polygon: []
+    severity: 0
+    hard: true
+    params: {}

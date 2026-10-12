@@ -1,0 +1,96 @@
+{
+  "report_title": "v3 complete pipeline benchmark results",
+  "report_status": "verified_mvtec_benchmark_results; APD_real_world_results_pending",
+  "scope": {
+    "benchmark": "MVTec AD",
+    "evaluation_protocol": "v3-category split: settings selected on 5 validation categories and reported on 10 held-out categories",
+    "held_out_categories": ["bottle", "cable", "capsule", "grid", "leather", "pill", "screw", "tile", "toothbrush", "zipper"],
+    "held_out_images": 1204,
+    "held_out_normal_images": 298,
+    "held_out_anomalous_images": 906,
+    "important_scope_note": "These are benchmark results, not results from the APD EV-panel dataset or a production deployment."
+  },
+  "frozen_complete_pipeline": {
+    "architecture": "Stage A recipe-based logical inspection fused with Stage B DINOv2 visual-reference matching and CLIP semantic scoring",
+    "dino_backbone": "dinov2_vitl14_reg",
+    "dino_short_side": 560,
+    "dino_scorer": "knn_global",
+    "reference_normals_k": 4,
+    "aggregation_radius": 1,
+    "clip_backbone": "ViT-L-14-336",
+    "clip_input_size": 336,
+    "fusion_weights": {"dino": 0.7, "clip": 0.3},
+    "calibration": {
+      "status": "calibrated, not strictly zero-shot",
+      "temperature": 1.1011927618350483,
+      "bias": -1.145977021713185
+    },
+    "threshold_protocol": "threshold selected from disjoint validation normals at a 5% false-reject-rate target",
+    "commit": "f16ef0f",
+    "config_hash": "a1d1c42e0c28",
+    "frozen_settings_sha256": "153e12546c82333b863b255349e6d2644805b97fb1444a4676f47ea5da9dc70b"
+  },
+  "final_fused_macro_metrics": {
+    "image_auroc": 0.9658,
+    "pixel_auroc": 0.9656,
+    "aupro_at_5_percent_fpr": 0.7362,
+    "interpretation": "The system strongly separates normal and anomalous images and accurately localizes anomalous pixels on the held-out benchmark. AU-PRO is evaluated only up to a 5% false-positive rate and is normalized to the range [0, 1]."
+  },
+  "branch_comparison_macro_image_auroc": {
+    "clip_only": 0.8629,
+    "dino_only": 0.9598,
+    "stage_a_only": 0.5349,
+    "fused_stage_a_dino_clip": 0.9658,
+    "interpretation": "DINO reference matching provides most of the benchmark performance; fusion gives the best final image-level result. Stage A is intended for fixed-layout logical assembly checks and is not a standalone MVTec surface-defect detector."
+  },
+  "per_category_fused_results": [
+    {"category": "bottle", "images": 83, "normal": 20, "anomalous": 63, "image_auroc": 0.9984, "pixel_auroc": 0.9914, "aupro_at_5_percent_fpr": 0.8067, "recall_at_5_percent_frr": 1.0, "ece": 0.1047},
+    {"category": "cable", "images": 150, "normal": 58, "anomalous": 92, "image_auroc": 0.9496, "pixel_auroc": 0.9194, "aupro_at_5_percent_fpr": 0.6427, "recall_at_5_percent_frr": 0.7935, "ece": 0.2129},
+    {"category": "capsule", "images": 132, "normal": 23, "anomalous": 109, "image_auroc": 0.9625, "pixel_auroc": 0.9797, "aupro_at_5_percent_fpr": 0.785, "recall_at_5_percent_frr": 0.9083, "ece": 0.207},
+    {"category": "grid", "images": 78, "normal": 21, "anomalous": 57, "image_auroc": 1.0, "pixel_auroc": 0.9943, "aupro_at_5_percent_fpr": 0.8423, "recall_at_5_percent_frr": 1.0, "ece": 0.1648},
+    {"category": "leather", "images": 124, "normal": 32, "anomalous": 92, "image_auroc": 1.0, "pixel_auroc": 0.9844, "aupro_at_5_percent_fpr": 0.8488, "recall_at_5_percent_frr": 1.0, "ece": 0.0774},
+    {"category": "pill", "images": 167, "normal": 26, "anomalous": 141, "image_auroc": 0.9438, "pixel_auroc": 0.904, "aupro_at_5_percent_fpr": 0.8082, "recall_at_5_percent_frr": 0.8014, "ece": 0.219},
+    {"category": "screw", "images": 160, "normal": 41, "anomalous": 119, "image_auroc": 0.8116, "pixel_auroc": 0.9765, "aupro_at_5_percent_fpr": 0.6566, "recall_at_5_percent_frr": 0.3109, "ece": 0.4248, "note": "Primary benchmark weakness: localization is excellent, but image-level rejection and calibration are comparatively weak."},
+    {"category": "tile", "images": 117, "normal": 33, "anomalous": 84, "image_auroc": 0.9996, "pixel_auroc": 0.9606, "aupro_at_5_percent_fpr": 0.5262, "recall_at_5_percent_frr": 1.0, "ece": 0.1516},
+    {"category": "toothbrush", "images": 42, "normal": 12, "anomalous": 30, "image_auroc": 0.9944, "pixel_auroc": 0.9882, "aupro_at_5_percent_fpr": 0.8023, "recall_at_5_percent_frr": 0.9667, "ece": 0.1344, "low_n": true, "note": "Strong result with a small test set; interpret with wider uncertainty."},
+    {"category": "zipper", "images": 151, "normal": 32, "anomalous": 119, "image_auroc": 0.9976, "pixel_auroc": 0.9573, "aupro_at_5_percent_fpr": 0.643, "recall_at_5_percent_frr": 0.9832, "ece": 0.0639}
+  ],
+  "few_shot_dino_scaling": {
+    "metric_scope": "macro average over the same 10 held-out MVTec AD categories",
+    "knn_global": [
+      {"reference_normals_k": 1, "image_auroc": 0.9237, "pixel_auroc": 0.9627},
+      {"reference_normals_k": 2, "image_auroc": 0.9369, "pixel_auroc": 0.9659},
+      {"reference_normals_k": 4, "image_auroc": 0.96, "pixel_auroc": 0.969},
+      {"reference_normals_k": 8, "image_auroc": 0.9646, "pixel_auroc": 0.9714},
+      {"reference_normals_k": 16, "image_auroc": 0.9688, "pixel_auroc": 0.9738}
+    ],
+    "interpretation": "More normal reference images improve the visual matching branch. The deployed frozen setting uses k=4 as the validation-selected accuracy/operational-cost point."
+  },
+  "operational_measurements": {
+    "device_target": "NVIDIA RTX 4060 Laptop GPU, 8 GB VRAM",
+    "complete_pipeline_1920x1080_peak_vram_mb": 628.4,
+    "complete_pipeline_memory_gate_mb": 7168,
+    "complete_pipeline_deterministic_across_two_runs": true,
+    "dino_knn_global_seconds_per_image": 0.10604,
+    "dino_knn_global_peak_vram_mb": 581.4,
+    "interpretation": "The measured 1080p memory footprint is well below the 7 GB deployment gate."
+  },
+  "limitations_and_next_validation": {
+    "APD_dataset_evaluation": "pending",
+    "reason": "The APD dataset is not present locally, its ROI recipe has not been human-drawn and frozen, and no phase_6_apd_summary.json exists.",
+    "do_not_claim": "Do not describe these MVTec metrics as EV-panel, APD, customer-site, or production accuracy.",
+    "next_steps": [
+      "Obtain APD through its official release terms and place it outside version control.",
+      "Draw and human-review ROIs using normal reference images only, then freeze the APD recipe.",
+      "Run the frozen Phase 6 APD protocol and the post-freeze ROI coverage check.",
+      "Investigate screw-category image-level scoring and calibration before a high-reliability deployment."
+    ]
+  },
+  "source_artifacts": [
+    "v3/docs/results/phase_3.md",
+    "v3/docs/results/phase_5.md",
+    "D:/defect_cache/results/phase_3_summary.json",
+    "D:/defect_cache/results/phase_5_summary.json",
+    "v3/config/frozen_settings.json"
+  ]
+}
