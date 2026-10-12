@@ -1,4 +1,4 @@
-# PHASE 6: EV Body Panel Track on APD — STATUS: CODE COMPLETE (PENDING USER GATE RUN)
+# PHASE 6: Assembled Panel Dataset (APD) for EV Charging Stations Track — STATUS: CODE COMPLETE (PENDING USER GATE RUN)
 
 ## Task List
 - [x] Update `v3/config/recipes/apd_panel.yaml` with README section 6 skeleton, README section 2.5 category-to-stage mapping, `[Published]` reference points with the `224 px` caveat, and `status: needs-human-roi-drawing`.

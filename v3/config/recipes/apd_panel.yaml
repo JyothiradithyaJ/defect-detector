@@ -1,4 +1,4 @@
-# Recipe skeleton for APD EV body panel per README_v3.md sections 2.5, 6, and 8.3.
+# Recipe skeleton for APD (Assembled Panel Dataset for EV charging stations) per README_v3.md sections 2.5, 6, and 8.3.
 # Concrete polygon coordinates and expected parameters must be drawn on the
 # golden template by the human reviewer via `python -m v3.eval.draw_rois`.
 # No polygon coordinates or parameters may be guessed from test images.

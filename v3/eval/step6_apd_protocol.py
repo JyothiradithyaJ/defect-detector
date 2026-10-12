@@ -1,4 +1,4 @@
-"""Phase 6: APD EV Body Panel Evaluation Protocol (README section 8.3).
+"""Phase 6: APD (Assembled Panel Dataset for EV charging stations) Evaluation Protocol (README section 8.3).
 
 Rules enforced:
 1. Read-only existence check at D:/data/apd; never downloads or guesses URLs.
@@ -98,7 +98,9 @@ def check_apd_Prerequisites(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Phase 6: APD EV Body Panel Evaluation Protocol (README 8.3).")
+    parser = argparse.ArgumentParser(
+        description="Phase 6: APD (Assembled Panel Dataset for EV charging stations) Evaluation Protocol (README 8.3)."
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Path to v3 YAML config.")
     parser.add_argument(
         "--two-fold-retune",
@@ -128,7 +130,7 @@ def main() -> int:
     log_path = cfg.logs_dir / "step6_apd_protocol.log"
     with StepLogger(log_path) as logger:
         try:
-            logger.info("=== Phase 6: APD EV Body Panel Protocol (README 8.3) ===")
+            logger.info("=== Phase 6: APD (Assembled Panel Dataset for EV charging stations) Protocol (README 8.3) ===")
             frozen, raw_recipe, recipe_sha_before = check_apd_Prerequisites(
                 apd_root=cfg.apd_root,
                 frozen_json_path=cfg.frozen_settings_json,
